@@ -67,10 +67,14 @@ func hooksBinds(app core.App, loader *goja.Runtime, executors *vmsPool) {
 				tagsAsValues[i] = reflect.ValueOf(tag)
 			}
 
-			hookInstance := appValue.MethodByName(method.Name).Call(tagsAsValues)[0]
+			hookInstance := method.Func.Call(append([]reflect.Value{appValue}, tagsAsValues...))[0]
 			hookBindFunc := hookInstance.MethodByName("BindFunc")
 
 			handlerType := hookBindFunc.Type().In(0)
+
+			if handlerType.Kind() != reflect.Func || handlerType.NumIn() != 1 || handlerType.NumOut() != 1 || !handlerType.Out(0).Implements(reflect.TypeOf((*error)(nil)).Elem()) {
+				panic("unexpected hook handler type - expected func(T) error")
+			}
 
 			handler := reflect.MakeFunc(handlerType, func(args []reflect.Value) (results []reflect.Value) {
 				handlerArgs := make([]any, len(args))
@@ -653,7 +657,10 @@ func BindCore(vm *goja.Runtime) {
 	})
 
 	vm.Set("Cookie", func(call goja.ConstructorCall) *goja.Object {
-		instance := &http.Cookie{}
+		instance := &http.Cookie{
+			Secure:   true,
+			HttpOnly: true,
+		}
 		return structConstructor(vm, call, instance)
 	})
 
