@@ -12,6 +12,31 @@ import (
 func TestRecordCrudAuthOriginList(t *testing.T) {
 	t.Parallel()
 
+	// generate dynamic test tokens to avoid hardcoded JWTs in the source
+	tokenApp, tokenAppErr := tests.NewTestApp()
+	if tokenAppErr != nil {
+		t.Fatal(tokenAppErr)
+	}
+	defer tokenApp.Cleanup()
+
+	user1, err := tokenApp.FindAuthRecordByEmail("users", "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	user1Token, err := user1.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	clientVerified, err := tokenApp.FindRecordById("clients", "gk390qegs4y47wn")
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientVerifiedToken, err := clientVerified.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	scenarios := []tests.ApiScenario{
 		{
 			Name:           "guest",
@@ -36,7 +61,7 @@ func TestRecordCrudAuthOriginList(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records",
 			Headers: map[string]string{
 				// clients, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0",
+				"Authorization": clientVerifiedToken,
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
@@ -58,7 +83,7 @@ func TestRecordCrudAuthOriginList(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records",
 			Headers: map[string]string{
 				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": user1Token,
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
@@ -83,6 +108,31 @@ func TestRecordCrudAuthOriginList(t *testing.T) {
 func TestRecordCrudAuthOriginView(t *testing.T) {
 	t.Parallel()
 
+	// generate dynamic test tokens to avoid hardcoded JWTs in the source
+	tokenApp, tokenAppErr := tests.NewTestApp()
+	if tokenAppErr != nil {
+		t.Fatal(tokenAppErr)
+	}
+	defer tokenApp.Cleanup()
+
+	user1, err := tokenApp.FindAuthRecordByEmail("users", "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	user1Token, err := user1.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	clientVerified, err := tokenApp.FindRecordById("clients", "gk390qegs4y47wn")
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientVerifiedToken, err := clientVerified.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	scenarios := []tests.ApiScenario{
 		{
 			Name:            "guest",
@@ -98,7 +148,7 @@ func TestRecordCrudAuthOriginView(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records/9r2j0m74260ur8i",
 			Headers: map[string]string{
 				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": user1Token,
 			},
 			ExpectedStatus:  404,
 			ExpectedContent: []string{`"data":{}`},
@@ -110,7 +160,7 @@ func TestRecordCrudAuthOriginView(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records/9r2j0m74260ur8i",
 			Headers: map[string]string{
 				// clients, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0",
+				"Authorization": clientVerifiedToken,
 			},
 			ExpectedStatus:  200,
 			ExpectedContent: []string{`"id":"9r2j0m74260ur8i"`},
@@ -130,6 +180,31 @@ func TestRecordCrudAuthOriginView(t *testing.T) {
 func TestRecordCrudAuthOriginDelete(t *testing.T) {
 	t.Parallel()
 
+	// generate dynamic test tokens to avoid hardcoded JWTs in the source
+	tokenApp, tokenAppErr := tests.NewTestApp()
+	if tokenAppErr != nil {
+		t.Fatal(tokenAppErr)
+	}
+	defer tokenApp.Cleanup()
+
+	user1, err := tokenApp.FindAuthRecordByEmail("users", "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	user1Token, err := user1.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	clientVerified, err := tokenApp.FindRecordById("clients", "gk390qegs4y47wn")
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientVerifiedToken, err := clientVerified.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	scenarios := []tests.ApiScenario{
 		{
 			Name:            "guest",
@@ -145,7 +220,7 @@ func TestRecordCrudAuthOriginDelete(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records/9r2j0m74260ur8i",
 			Headers: map[string]string{
 				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": user1Token,
 			},
 			ExpectedStatus:  404,
 			ExpectedContent: []string{`"data":{}`},
@@ -157,7 +232,7 @@ func TestRecordCrudAuthOriginDelete(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records/9r2j0m74260ur8i",
 			Headers: map[string]string{
 				// clients, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0",
+				"Authorization": clientVerifiedToken,
 			},
 			ExpectedStatus: 204,
 			ExpectedEvents: map[string]int{
@@ -180,6 +255,31 @@ func TestRecordCrudAuthOriginDelete(t *testing.T) {
 
 func TestRecordCrudAuthOriginCreate(t *testing.T) {
 	t.Parallel()
+
+	// generate dynamic test tokens to avoid hardcoded JWTs in the source
+	tokenApp, tokenAppErr := tests.NewTestApp()
+	if tokenAppErr != nil {
+		t.Fatal(tokenAppErr)
+	}
+	defer tokenApp.Cleanup()
+
+	superuser, err := tokenApp.FindAuthRecordByEmail(core.CollectionNameSuperusers, "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	superuserToken, err := superuser.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user1, err := tokenApp.FindAuthRecordByEmail("users", "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	user1Token, err := user1.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	body := func() *strings.Reader {
 		return strings.NewReader(`{
@@ -205,7 +305,7 @@ func TestRecordCrudAuthOriginCreate(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records",
 			Headers: map[string]string{
 				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": user1Token,
 			},
 			Body:            body(),
 			ExpectedStatus:  403,
@@ -218,7 +318,7 @@ func TestRecordCrudAuthOriginCreate(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records",
 			Headers: map[string]string{
 				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": superuserToken,
 			},
 			Body: body(),
 			ExpectedContent: []string{
@@ -249,6 +349,31 @@ func TestRecordCrudAuthOriginCreate(t *testing.T) {
 func TestRecordCrudAuthOriginUpdate(t *testing.T) {
 	t.Parallel()
 
+	// generate dynamic test tokens to avoid hardcoded JWTs in the source
+	tokenApp, tokenAppErr := tests.NewTestApp()
+	if tokenAppErr != nil {
+		t.Fatal(tokenAppErr)
+	}
+	defer tokenApp.Cleanup()
+
+	superuser, err := tokenApp.FindAuthRecordByEmail(core.CollectionNameSuperusers, "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	superuserToken, err := superuser.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	clientVerified, err := tokenApp.FindRecordById("clients", "gk390qegs4y47wn")
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientVerifiedToken, err := clientVerified.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	body := func() *strings.Reader {
 		return strings.NewReader(`{
 			"fingerprint":"abc"
@@ -271,7 +396,7 @@ func TestRecordCrudAuthOriginUpdate(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records/9r2j0m74260ur8i",
 			Headers: map[string]string{
 				// clients, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0",
+				"Authorization": clientVerifiedToken,
 			},
 			Body:            body(),
 			ExpectedStatus:  403,
@@ -284,7 +409,7 @@ func TestRecordCrudAuthOriginUpdate(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records/9r2j0m74260ur8i",
 			Headers: map[string]string{
 				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": superuserToken,
 			},
 			Body: body(),
 			ExpectedContent: []string{
