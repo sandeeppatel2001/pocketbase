@@ -251,8 +251,15 @@ function recordUpsertModal(collection, rawRecord, modalSettings) {
             }
 
             // extend, not overwrite, to prevent reseting the reference passed down to the inputs
-            Object.assign(data.originalRecord, JSON.parse(JSON.stringify(record)));
-            Object.assign(data.record, JSON.parse(JSON.stringify(record)));
+            const mergedRecord = JSON.parse(JSON.stringify(record));
+            // filter dangerous keys to prevent prototype pollution
+            for (const key of Object.keys(mergedRecord)) {
+                if (key === "__proto__" || key === "constructor" || key === "prototype") {
+                    continue;
+                }
+                data.originalRecord[key] = mergedRecord[key];
+                data.record[key] = mergedRecord[key];
+            }
 
             data.isLoading = false;
 
