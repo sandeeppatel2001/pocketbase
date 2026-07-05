@@ -299,7 +299,12 @@ window.app.components.recordsList = function(propsArg = {}) {
             }
 
             // merge with existing
-            Object.assign(found, JSON.parse(JSON.stringify(e.detail)));
+            const merged = JSON.parse(JSON.stringify(e.detail));
+            for (const k of Object.keys(merged)) {
+                if (k !== '__proto__' && k !== 'constructor' && k !== 'prototype') {
+                    found[k] = merged[k];
+                }
+            }
         },
         "record:delete": (e) => {
             if (
