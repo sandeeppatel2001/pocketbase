@@ -16,7 +16,7 @@ package blob
 import (
 	"bytes"
 	"context"
-	"crypto/md5"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -525,11 +525,10 @@ type WriterOptions struct {
 	// ContentType if you read the blob back.
 	DisableContentTypeDetection bool
 
-	// ContentMD5 is used as a message integrity check.
-	// If len(ContentMD5) > 0, the MD5 hash of the bytes written must match
-	// ContentMD5, or Close will return an error without completing the write.
-	// https://tools.ietf.org/html/rfc1864
-	ContentMD5 []byte
+	// ContentHash is used as a message integrity check.
+	// If len(ContentHash) > 0, the SHA-256 hash of the bytes written must match
+	// ContentHash, or Close will return an error without completing the write.
+	ContentHash []byte
 
 	// Metadata holds key/value strings to be associated with the blob, or nil.
 	// Keys may not be empty, and are lowercased before being written.
@@ -565,7 +564,7 @@ func (b *Bucket) NewWriter(ctx context.Context, key string, opts *WriterOptions)
 		ContentDisposition:          opts.ContentDisposition,
 		ContentEncoding:             opts.ContentEncoding,
 		ContentLanguage:             opts.ContentLanguage,
-		ContentMD5:                  opts.ContentMD5,
+		ContentHash:                 opts.ContentHash,
 		BufferSize:                  opts.BufferSize,
 		MaxConcurrency:              opts.MaxConcurrency,
 		DisableContentTypeDetection: opts.DisableContentTypeDetection,
@@ -607,8 +606,8 @@ func (b *Bucket) NewWriter(ctx context.Context, key string, opts *WriterOptions)
 		drv:        b.drv,
 		cancel:     cancel,
 		key:        key,
-		contentMD5: opts.ContentMD5,
-		md5hash:    md5.New(),
+		contentHash: opts.ContentHash,
+		hash:        sha256.New(),
 	}
 
 	if opts.ContentType != "" || opts.DisableContentTypeDetection {
