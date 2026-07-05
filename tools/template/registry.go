@@ -23,16 +23,18 @@ package template
 
 import (
 	"fmt"
+	"html"
 	"html/template"
 	"io/fs"
 	"path/filepath"
 	"strings"
 
 	"github.com/pocketbase/pocketbase/tools/store"
+	xhtml "golang.org/x/net/html"
 )
 
 // NewRegistry creates and initializes a new templates registry with
-// some defaults (eg. global "raw" template function for unescaped HTML).
+// some defaults (eg. global "raw" template function for HTML).
 //
 // Use the Registry.Load* methods to load templates into the registry.
 func NewRegistry() *Registry {
@@ -40,7 +42,7 @@ func NewRegistry() *Registry {
 		cache: store.New[string, *Renderer](nil),
 		funcs: template.FuncMap{
 			"raw": func(str string) template.HTML {
-				return template.HTML(str)
+				return template.HTML(sanitizeHTML(str))
 			},
 		},
 	}
@@ -138,4 +140,186 @@ func (r *Registry) LoadFS(fsys fs.FS, globPatterns ...string) *Renderer {
 	}
 
 	return found
+}
+
+var safeElements = map[string]bool{
+	"a": true, "abbr": true, "b": true, "blockquote": true,
+	"br": true, "caption": true, "cite": true, "code": true,
+	"col": true, "colgroup": true, "dd": true, "del": true,
+	"details": true, "dfn": true, "div": true, "dl": true,
+	"dt": true, "em": true, "figcaption": true, "figure": true,
+	"h1": true, "h2": true, "h3": true, "h4": true, "h5": true,
+	"h6": true, "hr": true, "i": true, "img": true, "ins": true,
+	"kbd": true, "li": true, "mark": true, "ol": true, "p": true,
+	"pre": true, "q": true, "s": true, "samp": true, "small": true,
+	"span": true, "strong": true, "sub": true, "summary": true,
+	"sup": true, "table": true, "tbody": true, "td": true,
+	"tfoot": true, "th": true, "thead": true, "time": true,
+	"tr": true, "u": true, "ul": true, "var": true,
+}
+
+var voidElements = map[string]bool{
+	"br": true, "hr": true, "img": true,
+}
+
+var safeURLSchemes = map[string]bool{
+	"http": true, "https": true, "mailto": true, "tel": true, "ftp": true,
+}
+
+func isSafeURL(url string) bool {
+	url = strings.TrimSpace(url)
+	if url == "" {
+		return true
+	}
+
+	if url[0] == '/' || url[0] == '#' || url[0] == '.' {
+		return true
+	}
+
+	schemeEnd := strings.Index(url, ":")
+	if schemeEnd == -1 {
+		return true
+	}
+
+	scheme := strings.ToLower(url[:schemeEnd])
+
+	return safeURLSchemes[scheme]
+}
+
+func isSafeAttr(tag string, attr xhtml.Attribute) bool {
+	key := strings.ToLower(attr.Key)
+
+	if strings.HasPrefix(key, "on") {
+		return false
+	}
+
+	switch key {
+	case "style", "srcdoc", "sandbox", "formaction", "formenctype",
+		"formmethod", "formnovalidate", "formtarget":
+		return false
+	}
+
+	switch key {
+	case "action", "cite", "data", "href", "longdesc", "poster", "src":
+		return isSafeURL(attr.Val)
+	}
+
+	switch key {
+	case "class", "dir", "hidden", "id", "lang", "title":
+		return true
+	}
+
+	switch tag {
+	case "a":
+		switch key {
+		case "download", "hreflang", "rel", "target", "type":
+			return true
+		}
+	case "img":
+		switch key {
+		case "alt", "crossorigin", "decoding", "height", "loading",
+			"referrerpolicy", "sizes", "srcset", "width":
+			return true
+		}
+	case "td", "th":
+		switch key {
+		case "abbr", "colspan", "headers", "rowspan", "scope":
+			return true
+		}
+	case "col", "colgroup":
+		switch key {
+		case "span":
+			return true
+		}
+	case "time":
+		switch key {
+		case "datetime":
+			return true
+		}
+	case "ol":
+		switch key {
+		case "reversed", "start", "type":
+			return true
+		}
+	case "li":
+		switch key {
+		case "value":
+			return true
+		}
+	case "del", "ins":
+		switch key {
+		case "cite", "datetime":
+			return true
+		}
+	case "blockquote", "q":
+		switch key {
+		case "cite":
+			return true
+		}
+	case "details":
+		switch key {
+		case "open":
+			return true
+		}
+	}
+
+	return false
+}
+
+func renderSafeHTML(buf *strings.Builder, n *xhtml.Node) {
+	switch n.Type {
+	case xhtml.TextNode:
+		buf.WriteString(html.EscapeString(n.Data))
+	case xhtml.ElementNode:
+		if !safeElements[n.Data] {
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				renderSafeHTML(buf, c)
+			}
+			return
+		}
+
+		buf.WriteByte('<')
+		buf.WriteString(n.Data)
+		for _, attr := range n.Attr {
+			if !isSafeAttr(n.Data, attr) {
+				continue
+			}
+			buf.WriteByte(' ')
+			buf.WriteString(attr.Key)
+			buf.WriteString(`="`)
+			buf.WriteString(html.EscapeString(attr.Val))
+			buf.WriteByte('"')
+		}
+		buf.WriteByte('>')
+
+		if voidElements[n.Data] {
+			return
+		}
+
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			renderSafeHTML(buf, c)
+		}
+
+		buf.WriteString("</")
+		buf.WriteString(n.Data)
+		buf.WriteByte('>')
+	case xhtml.DocumentNode:
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			renderSafeHTML(buf, c)
+		}
+	}
+}
+
+// sanitizeHTML strips all unsafe HTML tags and attributes,
+// allowing only a safe subset of HTML elements with validated attributes.
+func sanitizeHTML(input string) string {
+	doc, err := xhtml.Parse(strings.NewReader(input))
+	if err != nil {
+		return html.EscapeString(input)
+	}
+
+	var buf strings.Builder
+	renderSafeHTML(&buf, doc)
+
+	return buf.String()
 }
