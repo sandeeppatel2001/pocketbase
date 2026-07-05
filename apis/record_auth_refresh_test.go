@@ -11,6 +11,53 @@ import (
 func TestRecordAuthRefresh(t *testing.T) {
 	t.Parallel()
 
+	// generate dynamic test tokens to avoid hardcoded JWTs in the source
+	tokenApp, tokenAppErr := tests.NewTestApp()
+	if tokenAppErr != nil {
+		t.Fatal(tokenAppErr)
+	}
+	defer tokenApp.Cleanup()
+
+	superuser, err := tokenApp.FindAuthRecordByEmail(core.CollectionNameSuperusers, "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	superuserToken, err := superuser.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user1, err := tokenApp.FindAuthRecordByEmail("users", "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	user1Token, err := user1.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	user1StaticToken, err := user1.NewStaticAuthToken(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	clientUnverified, err := tokenApp.FindRecordById("clients", "o1y0dd0spd786md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientUnverifiedToken, err := clientUnverified.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	clientVerified, err := tokenApp.FindRecordById("clients", "gk390qegs4y47wn")
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientVerifiedToken, err := clientVerified.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	scenarios := []tests.ApiScenario{
 		{
 			Name:            "unauthorized",
@@ -25,7 +72,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/auth-refresh",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": superuserToken,
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
@@ -36,7 +83,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/demo1/auth-refresh",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": user1Token,
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
@@ -47,7 +94,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/clients/auth-refresh?expand=rel,missing",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": user1Token,
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
@@ -58,7 +105,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/auth-refresh?expand=rel,missing",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": user1Token,
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
@@ -74,7 +121,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			NotExpectedContent: []string{
 				`"missing":`,
 				// should return a different token
-				"eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				user1Token,
 			},
 			ExpectedEvents: map[string]int{
 				"*":                          0,
@@ -88,12 +135,12 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/auth-refresh",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6ZmFsc2V9.4IsO6YMsR19crhwl_YWzvRH8pfq2Ri4Gv2dzGyneLak",
+				"Authorization": user1StaticToken,
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
 				// should return the same token
-				`"token":"eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6ZmFsc2V9.4IsO6YMsR19crhwl_YWzvRH8pfq2Ri4Gv2dzGyneLak"`,
+				`"token":"` + user1StaticToken + `"`,
 				`"record":`,
 				`"id":"4q1xlclmfloku33"`,
 				`"emailVisibility":false`,
@@ -111,7 +158,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/clients/auth-refresh",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6Im8xeTBkZDBzcGQ3ODZtZCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.Zi0yXE-CNmnbTdVaQEzYZVuECqRdn3LgEM6pmB3XWBE",
+				"Authorization": clientUnverifiedToken,
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
@@ -125,7 +172,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/clients/auth-refresh",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0",
+				"Authorization": clientVerifiedToken,
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
@@ -147,7 +194,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/auth-refresh",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": user1Token,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				app.OnRecordAuthRefreshRequest().BindFunc(func(e *core.RecordAuthRefreshRequestEvent) error {
@@ -176,7 +223,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/auth-refresh",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": user1Token,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				app.Settings().RateLimits.Enabled = true
@@ -195,7 +242,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/auth-refresh",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": user1Token,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				app.Settings().RateLimits.Enabled = true
