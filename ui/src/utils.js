@@ -238,6 +238,10 @@ const utils = {
                 return defaultVal;
             }
 
+            if (part === "__proto__" || part === "prototype" || part === "constructor") {
+                return defaultVal;
+            }
+
             result = result[part];
         }
 
@@ -275,6 +279,11 @@ const utils = {
                 result[part] = {};
             }
 
+            if (part === "__proto__" || part === "prototype" || part === "constructor") {
+                console.warn("setByPath: blocked path segment:", part);
+                return;
+            }
+
             result = result[part];
         }
 
@@ -306,6 +315,10 @@ const utils = {
                 || (!utils.isObject(result[part]) && !Array.isArray(result[part]))
             ) {
                 result[part] = {};
+            }
+
+            if (part === "__proto__" || part === "prototype" || part === "constructor") {
+                return;
             }
 
             result = result[part];
@@ -507,7 +520,7 @@ const utils = {
         }
 
         return str
-            .replace(new RegExp("[" + preserved.join("") + "]", "g"), " ") // replace preserved characters with spaces
+            .replace(new RegExp("[" + preserved.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("") + "]", "g"), " ") // replace preserved characters with spaces
             .replace(/[^\w\ ]/gi, "") // replaces all non-alphanumeric with empty string
             .replace(/\s+/g, delimiter); // collapse whitespaces and replace with `delimiter`
     },
@@ -915,11 +928,15 @@ const utils = {
     isActivePath(href, subPathPattern = true, customHash = "") {
         customHash = customHash || navigationStore.hash;
 
+        const escapeRe = typeof RegExp.escape === "function"
+            ? (str) => RegExp.escape(str)
+            : (str) => ("" + str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
         let pattern;
         if (subPathPattern) {
-            pattern = new RegExp("^" + RegExp.escape(href) + "\\/?.*$");
+            pattern = new RegExp("^" + escapeRe(href) + "\\/?.*$");
         } else {
-            pattern = new RegExp("^" + RegExp.escape(href) + "\\/?(?:\\?.+)?$");
+            pattern = new RegExp("^" + escapeRe(href) + "\\/?(?:\\?.+)?$");
         }
 
         return pattern.test(customHash);
