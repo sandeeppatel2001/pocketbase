@@ -1,16 +1,55 @@
 package apis_test
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
+	"github.com/pocketbase/pocketbase/tools/security"
 )
 
 func TestRecordConfirmPasswordReset(t *testing.T) {
 	t.Parallel()
+
+	// generate dynamic test tokens to avoid hardcoded JWTs in the source
+	tokenApp, tokenAppErr := tests.NewTestApp()
+	if tokenAppErr != nil {
+		t.Fatal(tokenAppErr)
+	}
+	defer tokenApp.Cleanup()
+
+	tokenUser, tokenErr := tokenApp.FindAuthRecordByEmail("users", "test@example.com")
+	if tokenErr != nil {
+		t.Fatal(tokenErr)
+	}
+
+	validPasswordResetToken, tokenErr := tokenUser.NewPasswordResetToken()
+	if tokenErr != nil {
+		t.Fatal(tokenErr)
+	}
+
+	// generate expired password reset token
+	signingKey := tokenUser.TokenKey() + tokenUser.Collection().PasswordResetToken.Secret
+	expiredPasswordResetToken, tokenErr := security.NewJWT(jwt.MapClaims{
+		core.TokenClaimType:         core.TokenTypePasswordReset,
+		core.TokenClaimId:           tokenUser.Id,
+		core.TokenClaimCollectionId: tokenUser.Collection().Id,
+		core.TokenClaimEmail:        tokenUser.Email(),
+	}, signingKey, -time.Hour)
+	if tokenErr != nil {
+		t.Fatal(tokenErr)
+	}
+
+	// generate a non-password-reset token
+	nonPasswordResetToken, tokenErr := tokenUser.NewVerificationToken()
+	if tokenErr != nil {
+		t.Fatal(tokenErr)
+	}
 
 	scenarios := []tests.ApiScenario{
 		{
@@ -40,11 +79,11 @@ func TestRecordConfirmPasswordReset(t *testing.T) {
 			Name:   "expired token and invalid password",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/confirm-password-reset",
-			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MTY0MDk5MTY2MSwidHlwZSI6InBhc3N3b3JkUmVzZXQiLCJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.5Tm6_6amQqOlX3urAnXlEdmxwG5qQJfiTg6U0hHR1hk",
+			Body: strings.NewReader(fmt.Sprintf(`{
+				"token":"%s",
 				"password":"1234567",
 				"passwordConfirm":"7654321"
-			}`),
+			}`, expiredPasswordResetToken)),
 			ExpectedStatus: 400,
 			ExpectedContent: []string{
 				`"data":{`,
@@ -58,11 +97,11 @@ func TestRecordConfirmPasswordReset(t *testing.T) {
 			Name:   "non-password reset token",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/confirm-password-reset",
-			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6InZlcmlmaWNhdGlvbiIsImNvbGxlY3Rpb25JZCI6Il9wYl91c2Vyc19hdXRoXyIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSJ9.SetHpu2H-x-q4TIUz-xiQjwi7MNwLCLvSs4O0hUSp0E",
+			Body: strings.NewReader(fmt.Sprintf(`{
+				"token":"%s",
 				"password":"1234567!",
 				"passwordConfirm":"1234567!"
-			}`),
+			}`, nonPasswordResetToken)),
 			ExpectedStatus: 400,
 			ExpectedContent: []string{
 				`"data":{`,
@@ -74,11 +113,11 @@ func TestRecordConfirmPasswordReset(t *testing.T) {
 			Name:   "non auth collection",
 			Method: http.MethodPost,
 			URL:    "/api/collections/demo1/confirm-password-reset?expand=rel,missing",
-			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6InBhc3N3b3JkUmVzZXQiLCJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.xR-xq1oHDy0D8Q4NDOAEyYKGHWd_swzoiSoL8FLFBHY",
+			Body: strings.NewReader(fmt.Sprintf(`{
+				"token":"%s",
 				"password":"1234567!",
 				"passwordConfirm":"1234567!"
-			}`),
+			}`, validPasswordResetToken)),
 			ExpectedStatus:  404,
 			ExpectedContent: []string{`"data":{}`},
 			ExpectedEvents:  map[string]int{"*": 0},
@@ -87,11 +126,11 @@ func TestRecordConfirmPasswordReset(t *testing.T) {
 			Name:   "different auth collection",
 			Method: http.MethodPost,
 			URL:    "/api/collections/clients/confirm-password-reset?expand=rel,missing",
-			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6InBhc3N3b3JkUmVzZXQiLCJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.xR-xq1oHDy0D8Q4NDOAEyYKGHWd_swzoiSoL8FLFBHY",
+			Body: strings.NewReader(fmt.Sprintf(`{
+				"token":"%s",
 				"password":"1234567!",
 				"passwordConfirm":"1234567!"
-			}`),
+			}`, validPasswordResetToken)),
 			ExpectedStatus: 400,
 			ExpectedContent: []string{
 				`"data":{"token":{"code":"validation_token_collection_mismatch"`,
@@ -102,11 +141,11 @@ func TestRecordConfirmPasswordReset(t *testing.T) {
 			Name:   "valid token and data (unverified user)",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/confirm-password-reset",
-			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6InBhc3N3b3JkUmVzZXQiLCJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.xR-xq1oHDy0D8Q4NDOAEyYKGHWd_swzoiSoL8FLFBHY",
+			Body: strings.NewReader(fmt.Sprintf(`{
+				"token":"%s",
 				"password":"1234567!",
 				"passwordConfirm":"1234567!"
-			}`),
+			}`, validPasswordResetToken)),
 			ExpectedStatus: 204,
 			ExpectedEvents: map[string]int{
 				"*":                                   0,
@@ -139,7 +178,7 @@ func TestRecordConfirmPasswordReset(t *testing.T) {
 			},
 			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				_, err := app.FindAuthRecordByToken(
-					"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6InBhc3N3b3JkUmVzZXQiLCJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.xR-xq1oHDy0D8Q4NDOAEyYKGHWd_swzoiSoL8FLFBHY",
+					validPasswordResetToken,
 					core.TokenTypePasswordReset,
 				)
 				if err == nil {
@@ -173,11 +212,11 @@ func TestRecordConfirmPasswordReset(t *testing.T) {
 			Name:   "valid token and data (unverified user with different email from the one in the token)",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/confirm-password-reset",
-			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6InBhc3N3b3JkUmVzZXQiLCJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.xR-xq1oHDy0D8Q4NDOAEyYKGHWd_swzoiSoL8FLFBHY",
+			Body: strings.NewReader(fmt.Sprintf(`{
+				"token":"%s",
 				"password":"1234567!",
 				"passwordConfirm":"1234567!"
-			}`),
+			}`, validPasswordResetToken)),
 			ExpectedStatus: 204,
 			ExpectedEvents: map[string]int{
 				"*":                                   0,
@@ -218,7 +257,7 @@ func TestRecordConfirmPasswordReset(t *testing.T) {
 			},
 			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				_, err := app.FindAuthRecordByToken(
-					"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6InBhc3N3b3JkUmVzZXQiLCJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.xR-xq1oHDy0D8Q4NDOAEyYKGHWd_swzoiSoL8FLFBHY",
+					validPasswordResetToken,
 					core.TokenTypePasswordReset,
 				)
 				if err == nil {
@@ -252,11 +291,11 @@ func TestRecordConfirmPasswordReset(t *testing.T) {
 			Name:   "valid token and data (verified user)",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/confirm-password-reset",
-			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6InBhc3N3b3JkUmVzZXQiLCJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.xR-xq1oHDy0D8Q4NDOAEyYKGHWd_swzoiSoL8FLFBHY",
+			Body: strings.NewReader(fmt.Sprintf(`{
+				"token":"%s",
 				"password":"1234567!",
 				"passwordConfirm":"1234567!"
-			}`),
+			}`, validPasswordResetToken)),
 			ExpectedStatus: 204,
 			ExpectedEvents: map[string]int{
 				"*":                                   0,
@@ -293,7 +332,7 @@ func TestRecordConfirmPasswordReset(t *testing.T) {
 			},
 			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				_, err := app.FindAuthRecordByToken(
-					"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6InBhc3N3b3JkUmVzZXQiLCJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.xR-xq1oHDy0D8Q4NDOAEyYKGHWd_swzoiSoL8FLFBHY",
+					validPasswordResetToken,
 					core.TokenTypePasswordReset,
 				)
 				if err == nil {
@@ -318,11 +357,11 @@ func TestRecordConfirmPasswordReset(t *testing.T) {
 			Name:   "OnRecordConfirmPasswordResetRequest tx body write check",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/confirm-password-reset",
-			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6InBhc3N3b3JkUmVzZXQiLCJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.xR-xq1oHDy0D8Q4NDOAEyYKGHWd_swzoiSoL8FLFBHY",
+			Body: strings.NewReader(fmt.Sprintf(`{
+				"token":"%s",
 				"password":"1234567!",
 				"passwordConfirm":"1234567!"
-			}`),
+			}`, validPasswordResetToken)),
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				app.OnRecordConfirmPasswordResetRequest().BindFunc(func(e *core.RecordConfirmPasswordResetRequestEvent) error {
 					original := e.App
@@ -349,11 +388,11 @@ func TestRecordConfirmPasswordReset(t *testing.T) {
 			Name:   "RateLimit rule - users:confirmPasswordReset",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/confirm-password-reset",
-			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6InBhc3N3b3JkUmVzZXQiLCJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.xR-xq1oHDy0D8Q4NDOAEyYKGHWd_swzoiSoL8FLFBHY",
+			Body: strings.NewReader(fmt.Sprintf(`{
+				"token":"%s",
 				"password":"1234567!",
 				"passwordConfirm":"1234567!"
-			}`),
+			}`, validPasswordResetToken)),
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				app.Settings().RateLimits.Enabled = true
 				app.Settings().RateLimits.Rules = []core.RateLimitRule{
@@ -370,11 +409,11 @@ func TestRecordConfirmPasswordReset(t *testing.T) {
 			Name:   "RateLimit rule - *:confirmPasswordReset",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/confirm-password-reset",
-			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6InBhc3N3b3JkUmVzZXQiLCJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.xR-xq1oHDy0D8Q4NDOAEyYKGHWd_swzoiSoL8FLFBHY",
+			Body: strings.NewReader(fmt.Sprintf(`{
+				"token":"%s",
 				"password":"1234567!",
 				"passwordConfirm":"1234567!"
-			}`),
+			}`, validPasswordResetToken)),
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				app.Settings().RateLimits.Enabled = true
 				app.Settings().RateLimits.Rules = []core.RateLimitRule{
