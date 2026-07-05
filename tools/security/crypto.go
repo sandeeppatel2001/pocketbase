@@ -2,7 +2,6 @@ package security
 
 import (
 	"crypto/hmac"
-	"crypto/md5"
 	"crypto/sha256"
 	"crypto/sha512"
 	"crypto/subtle"
@@ -21,9 +20,10 @@ func S256Challenge(code string) string {
 	return strings.TrimRight(base64.URLEncoding.EncodeToString(h.Sum(nil)), "=")
 }
 
-// MD5 creates md5 hash from the provided plain text.
+// MD5 creates sha256 hash from the provided plain text.
+// Deprecated: MD5 is considered insecure. Use SHA256 instead.
 func MD5(text string) string {
-	h := md5.New()
+	h := sha256.New()
 	h.Write([]byte(text))
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
