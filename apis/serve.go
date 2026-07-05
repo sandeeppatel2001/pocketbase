@@ -297,7 +297,7 @@ func Serve(app core.App, config ServeConfig) error {
 	if config.HttpsAddr != "" {
 		if config.HttpAddr != "" {
 			// start an additional HTTP server for redirecting the traffic to the HTTPS version
-			go http.ListenAndServe(config.HttpAddr, certManager.HTTPHandler(nil))
+			go http.ListenAndServe(config.HttpAddr, certManager.HTTPHandler(redirectHandler()))
 		}
 
 		// start HTTPS server
@@ -319,6 +319,17 @@ func serverAddrToHost(addr string) string {
 		return "127.0.0.1"
 	}
 	return addr
+}
+
+// redirectHandler redirects all HTTP requests to HTTPS.
+func redirectHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		target := "https://" + r.Host + r.URL.Path
+		if len(r.URL.RawQuery) > 0 {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusMovedPermanently)
+	})
 }
 
 type serverErrorLogWriter struct {
