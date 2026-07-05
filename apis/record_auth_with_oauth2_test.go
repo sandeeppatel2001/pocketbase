@@ -54,6 +54,31 @@ func TestRecordAuthWithOAuth2(t *testing.T) {
 
 	externalImageURL := "https://pocketbase.io/images/logo.svg"
 
+	// generate dynamic test tokens to avoid hardcoded JWTs in the source
+	tokenApp, tokenAppErr := tests.NewTestApp()
+	if tokenAppErr != nil {
+		t.Fatal(tokenAppErr)
+	}
+	defer tokenApp.Cleanup()
+
+	testUser, testUserErr := tokenApp.FindAuthRecordByEmail("users", "test@example.com")
+	if testUserErr != nil {
+		t.Fatal(testUserErr)
+	}
+	testUserToken, testUserTokenErr := testUser.NewAuthToken()
+	if testUserTokenErr != nil {
+		t.Fatal(testUserTokenErr)
+	}
+
+	test2User, test2UserErr := tokenApp.FindAuthRecordByEmail("users", "test2@example.com")
+	if test2UserErr != nil {
+		t.Fatal(test2UserErr)
+	}
+	test2UserToken, test2UserTokenErr := test2User.NewAuthToken()
+	if test2UserTokenErr != nil {
+		t.Fatal(test2UserTokenErr)
+	}
+
 	scenarios := []tests.ApiScenario{
 		{
 			Name:   "disabled OAuth2 auth",
@@ -133,7 +158,7 @@ func TestRecordAuthWithOAuth2(t *testing.T) {
 			Headers: map[string]string{
 				// users, test2@example.com
 				// (auth with some other user from the same collection to ensure that it is ignored)
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6Im9hcDY0MGNvdDR5cnUycyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.GfJo6EHIobgas_AXt-M-tj5IoQendPnrkMSe9ExuSEY",
+				"Authorization": test2UserToken,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				user, err := app.FindAuthRecordByEmail("users", "test@example.com")
@@ -663,7 +688,7 @@ func TestRecordAuthWithOAuth2(t *testing.T) {
 			}`),
 			Headers: map[string]string{
 				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": testUserToken,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				user, err := app.FindAuthRecordByEmail("users", "test@example.com")
@@ -769,7 +794,7 @@ func TestRecordAuthWithOAuth2(t *testing.T) {
 			}`),
 			Headers: map[string]string{
 				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": testUserToken,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				user, err := app.FindAuthRecordByEmail("users", "test@example.com")
@@ -897,7 +922,7 @@ func TestRecordAuthWithOAuth2(t *testing.T) {
 			}`),
 			Headers: map[string]string{
 				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": testUserToken,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				user, err := app.FindAuthRecordByEmail("users", "test@example.com")
