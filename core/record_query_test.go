@@ -7,11 +7,14 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
 	"github.com/pocketbase/pocketbase/tools/dbutils"
+	"github.com/pocketbase/pocketbase/tools/security"
 	"github.com/pocketbase/pocketbase/tools/types"
 )
 
@@ -900,6 +903,40 @@ func TestFindAuthRecordByToken(t *testing.T) {
 	app, _ := tests.NewTestApp()
 	defer app.Cleanup()
 
+	// generate dynamic tokens to avoid hardcoded JWTs in the source
+	user, err := app.FindAuthRecordByEmail("users", "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	validAuthToken, err := user.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// generate expired auth token
+	signingKey := user.TokenKey() + user.Collection().AuthToken.Secret
+	expiredAuthToken, err := security.NewJWT(jwt.MapClaims{
+		core.TokenClaimType:         core.TokenTypeAuth,
+		core.TokenClaimId:           user.Id,
+		core.TokenClaimCollectionId: user.Collection().Id,
+		core.TokenClaimRefreshable:  true,
+	}, signingKey, -time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// generate verification token for the nologin collection
+	user2, err := app.FindAuthRecordByEmail("nologin", "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	validVerificationToken, err := user2.NewVerificationToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	scenarios := []struct {
 		name       string
 		token      string
@@ -920,33 +957,33 @@ func TestFindAuthRecordByToken(t *testing.T) {
 		},
 		{
 			"expired token",
-			"eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoxNjQwOTkxNjYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.2D3tmqPn3vc5LoqqCz8V-iCDVXo9soYiH0d32G7FQT4",
+			expiredAuthToken,
 			nil,
 			"",
 		},
 		{
 			"valid auth token",
-			"eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+			validAuthToken,
 			nil,
-			"4q1xlclmfloku33",
+			user.Id,
 		},
 		{
 			"valid verification token",
-			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImRjNDlrNmpnZWpuNDBoMyIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6InZlcmlmaWNhdGlvbiIsImNvbGxlY3Rpb25JZCI6ImtwdjcwOXNrMmxxYnFrOCIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSJ9.5GmuZr4vmwk3Cb_3ZZWNxwbE75KZC-j71xxIPR9AsVw",
+			validVerificationToken,
 			nil,
-			"dc49k6jgejn40h3",
+			user2.Id,
 		},
 		{
 			"auth token with file type only check",
-			"eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+			validAuthToken,
 			[]string{core.TokenTypeFile},
 			"",
 		},
 		{
 			"auth token with file and auth type check",
-			"eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+			validAuthToken,
 			[]string{core.TokenTypeFile, core.TokenTypeAuth},
-			"4q1xlclmfloku33",
+			user.Id,
 		},
 	}
 
