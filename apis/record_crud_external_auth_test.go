@@ -12,6 +12,30 @@ import (
 func TestRecordCrudExternalAuthList(t *testing.T) {
 	t.Parallel()
 
+	tokenApp, tokenAppErr := tests.NewTestApp()
+	if tokenAppErr != nil {
+		t.Fatal(tokenAppErr)
+	}
+	defer tokenApp.Cleanup()
+
+	clientVerified, err := tokenApp.FindAuthRecordByEmail("clients", "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientVerifiedToken, err := clientVerified.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user2, err := tokenApp.FindAuthRecordByEmail("users", "test2@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	user2Token, err := user2.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	scenarios := []tests.ApiScenario{
 		{
 			Name:           "guest",
@@ -36,7 +60,7 @@ func TestRecordCrudExternalAuthList(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameExternalAuths + "/records",
 			Headers: map[string]string{
 				// clients, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0",
+				"Authorization": clientVerifiedToken,
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
@@ -58,7 +82,7 @@ func TestRecordCrudExternalAuthList(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameExternalAuths + "/records",
 			Headers: map[string]string{
 				// users, test2@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6Im9hcDY0MGNvdDR5cnUycyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.GfJo6EHIobgas_AXt-M-tj5IoQendPnrkMSe9ExuSEY",
+				"Authorization": user2Token,
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
@@ -83,6 +107,30 @@ func TestRecordCrudExternalAuthList(t *testing.T) {
 func TestRecordCrudExternalAuthView(t *testing.T) {
 	t.Parallel()
 
+	tokenApp, tokenAppErr := tests.NewTestApp()
+	if tokenAppErr != nil {
+		t.Fatal(tokenAppErr)
+	}
+	defer tokenApp.Cleanup()
+
+	clientVerified, err := tokenApp.FindAuthRecordByEmail("clients", "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientVerifiedToken, err := clientVerified.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user1, err := tokenApp.FindAuthRecordByEmail("users", "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	user1Token, err := user1.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	scenarios := []tests.ApiScenario{
 		{
 			Name:            "guest",
@@ -98,7 +146,7 @@ func TestRecordCrudExternalAuthView(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameExternalAuths + "/records/dlmflokuq1xl342",
 			Headers: map[string]string{
 				// clients, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0",
+				"Authorization": clientVerifiedToken,
 			},
 			ExpectedStatus:  404,
 			ExpectedContent: []string{`"data":{}`},
@@ -110,7 +158,7 @@ func TestRecordCrudExternalAuthView(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameExternalAuths + "/records/dlmflokuq1xl342",
 			Headers: map[string]string{
 				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": user1Token,
 			},
 			ExpectedStatus:  200,
 			ExpectedContent: []string{`"id":"dlmflokuq1xl342"`},
@@ -130,6 +178,30 @@ func TestRecordCrudExternalAuthView(t *testing.T) {
 func TestRecordCrudExternalAuthDelete(t *testing.T) {
 	t.Parallel()
 
+	tokenApp, tokenAppErr := tests.NewTestApp()
+	if tokenAppErr != nil {
+		t.Fatal(tokenAppErr)
+	}
+	defer tokenApp.Cleanup()
+
+	clientVerified, err := tokenApp.FindAuthRecordByEmail("clients", "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientVerifiedToken, err := clientVerified.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user1, err := tokenApp.FindAuthRecordByEmail("users", "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	user1Token, err := user1.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	scenarios := []tests.ApiScenario{
 		{
 			Name:            "guest",
@@ -145,7 +217,7 @@ func TestRecordCrudExternalAuthDelete(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameExternalAuths + "/records/dlmflokuq1xl342",
 			Headers: map[string]string{
 				// clients, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0",
+				"Authorization": clientVerifiedToken,
 			},
 			ExpectedStatus:  404,
 			ExpectedContent: []string{`"data":{}`},
@@ -157,7 +229,7 @@ func TestRecordCrudExternalAuthDelete(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameExternalAuths + "/records/dlmflokuq1xl342",
 			Headers: map[string]string{
 				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": user1Token,
 			},
 			ExpectedStatus: 204,
 			ExpectedEvents: map[string]int{
@@ -180,6 +252,30 @@ func TestRecordCrudExternalAuthDelete(t *testing.T) {
 
 func TestRecordCrudExternalAuthCreate(t *testing.T) {
 	t.Parallel()
+
+	tokenApp, tokenAppErr := tests.NewTestApp()
+	if tokenAppErr != nil {
+		t.Fatal(tokenAppErr)
+	}
+	defer tokenApp.Cleanup()
+
+	user1, err := tokenApp.FindAuthRecordByEmail("users", "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	user1Token, err := user1.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	superuser, err := tokenApp.FindAuthRecordByEmail(core.CollectionNameSuperusers, "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	superuserToken, err := superuser.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	body := func() *strings.Reader {
 		return strings.NewReader(`{
@@ -206,7 +302,7 @@ func TestRecordCrudExternalAuthCreate(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameExternalAuths + "/records",
 			Headers: map[string]string{
 				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": user1Token,
 			},
 			Body:            body(),
 			ExpectedStatus:  403,
@@ -219,7 +315,7 @@ func TestRecordCrudExternalAuthCreate(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameExternalAuths + "/records",
 			Headers: map[string]string{
 				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": superuserToken,
 			},
 			Body: body(),
 			ExpectedContent: []string{
@@ -251,6 +347,30 @@ func TestRecordCrudExternalAuthCreate(t *testing.T) {
 func TestRecordCrudExternalAuthUpdate(t *testing.T) {
 	t.Parallel()
 
+	tokenApp, tokenAppErr := tests.NewTestApp()
+	if tokenAppErr != nil {
+		t.Fatal(tokenAppErr)
+	}
+	defer tokenApp.Cleanup()
+
+	clientVerified, err := tokenApp.FindAuthRecordByEmail("clients", "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientVerifiedToken, err := clientVerified.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	superuser, err := tokenApp.FindAuthRecordByEmail(core.CollectionNameSuperusers, "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	superuserToken, err := superuser.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	body := func() *strings.Reader {
 		return strings.NewReader(`{
 			"providerId": "abc"
@@ -273,7 +393,7 @@ func TestRecordCrudExternalAuthUpdate(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameExternalAuths + "/records/dlmflokuq1xl342",
 			Headers: map[string]string{
 				// clients, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0",
+				"Authorization": clientVerifiedToken,
 			},
 			Body:            body(),
 			ExpectedStatus:  403,
@@ -286,7 +406,7 @@ func TestRecordCrudExternalAuthUpdate(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameExternalAuths + "/records/dlmflokuq1xl342",
 			Headers: map[string]string{
 				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": superuserToken,
 			},
 			Body: body(),
 			ExpectedContent: []string{
