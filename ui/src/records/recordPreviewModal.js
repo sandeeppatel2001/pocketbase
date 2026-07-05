@@ -53,6 +53,21 @@ function copyJSON(record) {
     app.toasts.success("Record copied to clipboard!");
 }
 
+function safeRecordMerge(target, source, collection) {
+    const allowed = ['id', 'collectionId', 'collectionName', 'created', 'updated', 'expand'];
+    if (collection?.fields) {
+        for (const f of collection.fields) {
+            allowed.push(f.name);
+        }
+    }
+    for (const key of allowed) {
+        if (Object.prototype.hasOwnProperty.call(source, key)) {
+            target[key] = source[key];
+        }
+    }
+    return target;
+}
+
 function recordPreviewModal(rawRecord, modalSettings) {
     if (!rawRecord?.id) {
         app.toasts.error("Failed to load record.");
@@ -104,7 +119,7 @@ function recordPreviewModal(rawRecord, modalSettings) {
                 });
 
             // populate with an up-to-date fields
-            Object.assign(data.record, record);
+            safeRecordMerge(data.record, record, data.collection);
 
             data.isLoading = false;
         } catch (err) {
