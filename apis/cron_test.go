@@ -13,6 +13,31 @@ import (
 func TestCronsList(t *testing.T) {
 	t.Parallel()
 
+	// generate dynamic test tokens to avoid hardcoded JWTs in the source
+	tokenApp, tokenAppErr := tests.NewTestApp()
+	if tokenAppErr != nil {
+		t.Fatal(tokenAppErr)
+	}
+	defer tokenApp.Cleanup()
+
+	superuser, err := tokenApp.FindAuthRecordByEmail(core.CollectionNameSuperusers, "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	superuserToken, err := superuser.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user1, err := tokenApp.FindAuthRecordByEmail("users", "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	user1Token, err := user1.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	scenarios := []tests.ApiScenario{
 		{
 			Name:            "unauthorized",
@@ -27,7 +52,7 @@ func TestCronsList(t *testing.T) {
 			Method: http.MethodGet,
 			URL:    "/api/crons",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": user1Token,
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
@@ -38,7 +63,7 @@ func TestCronsList(t *testing.T) {
 			Method: http.MethodGet,
 			URL:    "/api/crons",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": superuserToken,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				app.Cron().RemoveAll()
@@ -52,7 +77,7 @@ func TestCronsList(t *testing.T) {
 			Method: http.MethodGet,
 			URL:    "/api/crons",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": superuserToken,
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
@@ -72,6 +97,31 @@ func TestCronsList(t *testing.T) {
 
 func TestCronsRun(t *testing.T) {
 	t.Parallel()
+
+	// generate dynamic test tokens to avoid hardcoded JWTs in the source
+	tokenApp, tokenAppErr := tests.NewTestApp()
+	if tokenAppErr != nil {
+		t.Fatal(tokenAppErr)
+	}
+	defer tokenApp.Cleanup()
+
+	superuser, err := tokenApp.FindAuthRecordByEmail(core.CollectionNameSuperusers, "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	superuserToken, err := superuser.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user1, err := tokenApp.FindAuthRecordByEmail("users", "test@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	user1Token, err := user1.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	beforeTestFunc := func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 		app.Cron().Add("test", "* * * * *", func() {
@@ -105,7 +155,7 @@ func TestCronsRun(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/crons/test",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": user1Token,
 			},
 			Delay:           50 * time.Millisecond,
 			BeforeTestFunc:  beforeTestFunc,
@@ -119,7 +169,7 @@ func TestCronsRun(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/crons/missing",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": superuserToken,
 			},
 			Delay:           50 * time.Millisecond,
 			BeforeTestFunc:  beforeTestFunc,
@@ -133,7 +183,7 @@ func TestCronsRun(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/crons/test",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": superuserToken,
 			},
 			Delay:          50 * time.Millisecond,
 			BeforeTestFunc: beforeTestFunc,
