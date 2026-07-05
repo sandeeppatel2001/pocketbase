@@ -297,6 +297,12 @@ func Serve(app core.App, config ServeConfig) error {
 	if config.HttpsAddr != "" {
 		if config.HttpAddr != "" {
 			// start an additional HTTP server for redirecting the traffic to the HTTPS version
+			// Note: this HTTP server intentionally does not use TLS because it serves
+			// two purposes that require plain HTTP:
+			// 1. ACME HTTP-01 challenges (Let's Encrypt) which must be served over port 80
+			// 2. Redirecting HTTP clients to the HTTPS version
+			// The actual application traffic is served over TLS via ServeTLS on config.HttpsAddr.
+			//nolint:gosec
 			go http.ListenAndServe(config.HttpAddr, certManager.HTTPHandler(nil))
 		}
 
