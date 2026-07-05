@@ -38,7 +38,7 @@ package fileblob
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"hash"
@@ -263,11 +263,11 @@ func (drv *driver) ListPaged(ctx context.Context, opts *blob.ListOptions) (*blob
 			return nil
 		}
 
-		var md5 []byte
+		var chksum []byte
 		if xa, err := getAttrs(path); err == nil {
-			// Note: we only have the MD5 hash for blobs that we wrote.
-			// For other blobs, md5 will remain nil.
-			md5 = xa.MD5
+			// Note: we only have the checksum for blobs that we wrote.
+			// For other blobs, chksum will remain nil.
+			chksum = xa.Checksum
 		}
 
 		fi, err := info.Info()
@@ -279,7 +279,7 @@ func (drv *driver) ListPaged(ctx context.Context, opts *blob.ListOptions) (*blob
 			Key:     key,
 			ModTime: fi.ModTime(),
 			Size:    fi.Size(),
-			MD5:     md5,
+			MD5:     chksum,
 		}
 
 		// If using Delimiter, collapse "directories".
@@ -365,7 +365,7 @@ func (drv *driver) Attributes(ctx context.Context, key string) (*blob.Attributes
 		// CreateTime left as the zero time.
 		ModTime: info.ModTime(),
 		Size:    info.Size(),
-		MD5:     xa.MD5,
+		MD5:     xa.Checksum,
 		ETag:    fmt.Sprintf("\"%x-%x\"", info.ModTime().UnixNano(), info.Size()),
 	}, nil
 }
@@ -472,8 +472,8 @@ func (drv *driver) NewTypedWriter(ctx context.Context, key, contentType string, 
 		ctx:        ctx,
 		f:          f,
 		path:       path,
-		contentMD5: opts.ContentMD5,
-		md5hash:    md5.New(),
+		contentHash: opts.ContentHash,
+		hash:        sha256.New(),
 		attrs: xattrs{
 			CacheControl:       opts.CacheControl,
 			ContentDisposition: opts.ContentDisposition,
@@ -580,23 +580,23 @@ func (r *reader) Attributes() *blob.ReaderAttributes {
 
 // writerWithSidecar implements the strategy of storing metadata in a distinct file.
 type writerWithSidecar struct {
-	ctx        context.Context
-	md5hash    hash.Hash
-	f          *os.File
-	path       string
-	attrs      xattrs
-	contentMD5 []byte
+	ctx         context.Context
+	hash        hash.Hash
+	f           *os.File
+	path        string
+	attrs       xattrs
+	contentHash []byte
 }
 
 func (w *writerWithSidecar) Write(p []byte) (n int, err error) {
 	n, err = w.f.Write(p)
 	if err != nil {
 		// Don't hash the unwritten tail twice when writing is resumed.
-		w.md5hash.Write(p[:n])
+		w.hash.Write(p[:n])
 		return n, err
 	}
 
-	if _, err := w.md5hash.Write(p); err != nil {
+	if _, err := w.hash.Write(p); err != nil {
 		return n, err
 	}
 
@@ -620,8 +620,8 @@ func (w *writerWithSidecar) Close() error {
 		return err
 	}
 
-	md5sum := w.md5hash.Sum(nil)
-	w.attrs.MD5 = md5sum
+	hashSum := w.hash.Sum(nil)
+	w.attrs.Checksum = hashSum
 
 	// Write the attributes file.
 	if err := setAttrs(w.path, w.attrs); err != nil {
