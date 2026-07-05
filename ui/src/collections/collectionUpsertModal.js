@@ -53,6 +53,41 @@ window.app.collectionTypes = {
     },
 };
 
+const __collectionAllowedProps = [
+    'id', 'created', 'updated',
+    'name', 'type', 'system',
+    'fields', 'indexes',
+    'listRule', 'viewRule', 'createRule', 'updateRule', 'deleteRule',
+    'viewQuery',
+    'authRule', 'manageRule',
+    'passwordAuth', 'oauth2', 'mfa', 'otp', 'authAlert',
+    'verificationTemplate', 'resetPasswordTemplate', 'confirmEmailChangeTemplate',
+    'authToken', 'verificationToken', 'passwordResetToken', 'emailChangeToken', 'fileToken',
+];
+
+const __fieldAllowedProps = [
+    'id', 'name', 'type', 'system',
+    'hidden', 'presentable', 'required', 'help', 'primaryKey', 'unique',
+    'min', 'max', 'pattern', 'autogeneratePattern',
+    'onlyInt',
+    'exceptDomains', 'onlyDomains',
+    'onCreate', 'onUpdate',
+    'values', 'maxSelect',
+    'maxSize', 'mimeTypes', 'thumbs', 'protected',
+    'collectionId', 'minSelect', 'cascadeDelete',
+    'convertURLs',
+    'cost',
+];
+
+function safeAssignProps(target, source, allowedProps) {
+    for (const key of allowedProps) {
+        if (Object.prototype.hasOwnProperty.call(source, key)) {
+            target[key] = source[key];
+        }
+    }
+    return target;
+}
+
 function collectionUpsertModal(rawCollection, modalSettings) {
     let modal;
 
@@ -330,9 +365,10 @@ function collectionUpsertModal(rawCollection, modalSettings) {
 
                             // merge with the scaffold to ensure that the minimal props are set
                             const scaffold = JSON.parse(JSON.stringify(app.store.collectionScaffolds[newType]));
-                            data.collection = Object.assign(
+                            data.collection = safeAssignProps(
                                 structuredClone(scaffold),
                                 JSON.parse(JSON.stringify(data.collection)),
+                                __collectionAllowedProps,
                             );
                             data.originalCollection = scaffold;
                             syncFieldsAndIndexesWithScaffold(data.collection);
@@ -738,7 +774,7 @@ function syncFieldsAndIndexesWithScaffold(collection) {
         }
 
         // merge the default field with the existing one
-        Object.assign(field, oldField);
+        safeAssignProps(field, oldField, __fieldAllowedProps);
     }
 
     for (const field of nonSystemFields) {
