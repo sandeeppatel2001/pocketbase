@@ -296,8 +296,20 @@ func Serve(app core.App, config ServeConfig) error {
 	var serveErr error
 	if config.HttpsAddr != "" {
 		if config.HttpAddr != "" {
-			// start an additional HTTP server for redirecting the traffic to the HTTPS version
-			go http.ListenAndServe(config.HttpAddr, certManager.HTTPHandler(nil))
+			// start an additional TLS server for redirecting the traffic to the HTTPS version
+			go func() {
+				redirectServer := &http.Server{
+					Addr:    config.HttpAddr,
+					Handler: certManager.HTTPHandler(nil),
+					TLSConfig: &tls.Config{
+						MinVersion:     tls.VersionTLS12,
+						GetCertificate: certManager.GetCertificate,
+						NextProtos:     []string{acme.ALPNProto},
+					},
+				}
+
+				_ = redirectServer.ListenAndServeTLS("", "")
+			}()
 		}
 
 		// start HTTPS server

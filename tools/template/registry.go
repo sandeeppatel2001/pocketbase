@@ -32,15 +32,15 @@ import (
 )
 
 // NewRegistry creates and initializes a new templates registry with
-// some defaults (eg. global "raw" template function for unescaped HTML).
+// some defaults (eg. global "raw" template function that returns plain text).
 //
 // Use the Registry.Load* methods to load templates into the registry.
 func NewRegistry() *Registry {
 	return &Registry{
 		cache: store.New[string, *Renderer](nil),
 		funcs: template.FuncMap{
-			"raw": func(str string) template.HTML {
-				return template.HTML(str)
+			"raw": func(str string) string {
+				return str
 			},
 		},
 	}

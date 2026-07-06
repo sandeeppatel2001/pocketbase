@@ -34,6 +34,21 @@ func TestBatchRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	clientHeaders := map[string]string{}
+	superuserHeaders := map[string]string{}
+
+	setClientAuthHeader := func(t testing.TB, app *tests.TestApp) {
+		t.Helper()
+
+		clientHeaders["Authorization"] = mustAuthToken(t, app, "clients", "test@example.com")
+	}
+
+	setSuperuserAuthHeader := func(t testing.TB, app *tests.TestApp) {
+		t.Helper()
+
+		superuserHeaders["Authorization"] = mustAuthToken(t, app, core.CollectionNameSuperusers, "test@example.com")
+	}
+
 	scenarios := []tests.ApiScenario{
 		{
 			Name:   "disabled batch requets",

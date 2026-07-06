@@ -4,7 +4,7 @@ package mails
 
 import (
 	"bytes"
-	"text/template"
+	"html/template"
 )
 
 // resolveTemplateContent resolves inline html template strings.
@@ -13,7 +13,11 @@ func resolveTemplateContent(data any, content ...string) (string, error) {
 		return "", nil
 	}
 
-	t := template.New("inline_template")
+	t := template.New("inline_template").Funcs(template.FuncMap{
+		"raw": func(str string) template.HTML {
+			return template.HTML(str)
+		},
+	})
 
 	var parseErr error
 	for _, v := range content {

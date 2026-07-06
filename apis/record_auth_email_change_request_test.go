@@ -9,8 +9,25 @@ import (
 	"github.com/pocketbase/pocketbase/tests"
 )
 
+func setAuthHeader(t testing.TB, app *tests.TestApp, collection, email string, headers map[string]string) {
+	record, err := app.FindAuthRecordByEmail(collection, email)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	token, err := record.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	headers["Authorization"] = token
+}
+
 func TestRecordRequestEmailChange(t *testing.T) {
 	t.Parallel()
+
+	userHeaders := map[string]string{}
+	superuserHeaders := map[string]string{}
 
 	scenarios := []tests.ApiScenario{
 		{
@@ -36,81 +53,87 @@ func TestRecordRequestEmailChange(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/clients/request-email-change",
 			Body:   strings.NewReader(`{"newEmail":"change@example.com"}`),
-			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
-			},
+			Headers: userHeaders,
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
 			ExpectedEvents:  map[string]int{"*": 0},
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				setAuthHeader(t, app, "users", "test@example.com", userHeaders)
+			},
 		},
 		{
 			Name:   "superuser authentication",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/request-email-change",
 			Body:   strings.NewReader(`{"newEmail":"change@example.com"}`),
-			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
-			},
+			Headers: superuserHeaders,
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
 			ExpectedEvents:  map[string]int{"*": 0},
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				setAuthHeader(t, app, core.CollectionNameSuperusers, "test@example.com", superuserHeaders)
+			},
 		},
 		{
 			Name:   "invalid data",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/request-email-change",
 			Body:   strings.NewReader(`{"newEmail`),
-			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
-			},
+			Headers: userHeaders,
 			ExpectedStatus:  400,
 			ExpectedContent: []string{`"data":{}`},
 			ExpectedEvents:  map[string]int{"*": 0},
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				setAuthHeader(t, app, "users", "test@example.com", userHeaders)
+			},
 		},
 		{
 			Name:   "empty data",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/request-email-change",
 			Body:   strings.NewReader(`{}`),
-			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
-			},
+			Headers: userHeaders,
 			ExpectedStatus: 400,
 			ExpectedContent: []string{
 				`"data":`,
 				`"newEmail":{"code":"validation_required"`,
 			},
 			ExpectedEvents: map[string]int{"*": 0},
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				setAuthHeader(t, app, "users", "test@example.com", userHeaders)
+			},
 		},
 		{
 			Name:   "valid data (existing email)",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/request-email-change",
 			Body:   strings.NewReader(`{"newEmail":"test2@example.com"}`),
-			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
-			},
+			Headers: userHeaders,
 			ExpectedStatus: 400,
 			ExpectedContent: []string{
 				`"data":`,
 				`"newEmail":{"code":"validation_invalid_new_email"`,
 			},
 			ExpectedEvents: map[string]int{"*": 0},
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				setAuthHeader(t, app, "users", "test@example.com", userHeaders)
+			},
 		},
 		{
 			Name:   "valid data (new email)",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/request-email-change",
 			Body:   strings.NewReader(`{"newEmail":"change@example.com"}`),
-			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
-			},
+			Headers: userHeaders,
 			ExpectedStatus: 204,
 			ExpectedEvents: map[string]int{
 				"*":                                 0,
 				"OnRecordRequestEmailChangeRequest": 1,
 				"OnMailerSend":                      1,
 				"OnMailerRecordEmailChangeSend":     1,
+			},
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				setAuthHeader(t, app, "users", "test@example.com", userHeaders)
 			},
 			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				if !strings.Contains(app.TestMailer.LastMessage().HTML, "/auth/confirm-email-change") {
@@ -123,10 +146,10 @@ func TestRecordRequestEmailChange(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/request-email-change",
 			Body:   strings.NewReader(`{"newEmail":"change@example.com"}`),
-			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
-			},
+			Headers: userHeaders,
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				setAuthHeader(t, app, "users", "test@example.com", userHeaders)
+
 				app.OnRecordRequestEmailChangeRequest().BindFunc(func(e *core.RecordRequestEmailChangeRequestEvent) error {
 					original := e.App
 					return e.App.RunInTransaction(func(txApp core.App) error {
@@ -153,10 +176,10 @@ func TestRecordRequestEmailChange(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/request-email-change",
 			Body:   strings.NewReader(`{"newEmail":"change@example.com"}`),
-			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
-			},
+			Headers: userHeaders,
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				setAuthHeader(t, app, "users", "test@example.com", userHeaders)
+
 				app.Settings().RateLimits.Enabled = true
 				app.Settings().RateLimits.Rules = []core.RateLimitRule{
 					{MaxRequests: 100, Label: "abc"},
@@ -173,10 +196,10 @@ func TestRecordRequestEmailChange(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/request-email-change",
 			Body:   strings.NewReader(`{"newEmail":"change@example.com"}`),
-			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
-			},
+			Headers: userHeaders,
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				setAuthHeader(t, app, "users", "test@example.com", userHeaders)
+
 				app.Settings().RateLimits.Enabled = true
 				app.Settings().RateLimits.Rules = []core.RateLimitRule{
 					{MaxRequests: 100, Label: "abc"},

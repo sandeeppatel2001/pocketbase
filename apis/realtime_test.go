@@ -111,6 +111,8 @@ func TestRealtimeConnect(t *testing.T) {
 
 func TestRealtimeSubscribe(t *testing.T) {
 	client := subscriptions.NewDefaultClient()
+	superuserHeaders := map[string]string{}
+	regularHeaders := map[string]string{}
 
 	resetClient := func() {
 		client.Unsubscribe()
@@ -127,9 +129,9 @@ func TestRealtimeSubscribe(t *testing.T) {
 		invalidSubscriptionsLimit[i] = fmt.Sprintf(`"%d"`, i)
 	}
 
-	scenarios := []tests.ApiScenario{
-		{
-			Name:            "missing client",
+		scenarios := []tests.ApiScenario{
+			{
+				Name:            "missing client",
 			Method:          http.MethodPost,
 			URL:             "/api/realtime",
 			Body:            strings.NewReader(`{"clientId":"missing","subscriptions":["test1", "test2"]}`),
@@ -322,15 +324,25 @@ func TestRealtimeSubscribe(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/realtime",
 			Body:   strings.NewReader(`{"clientId":"` + client.Id() + `","subscriptions":["test1", "test2"]}`),
-			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
-			},
+			Headers: superuserHeaders,
 			ExpectedStatus: 204,
 			ExpectedEvents: map[string]int{
 				"*":                          0,
 				"OnRealtimeSubscribeRequest": 1,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				superuser, err := app.FindAuthRecordByEmail(core.CollectionNameSuperusers, "test@example.com")
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				token, err := superuser.NewAuthToken()
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				superuserHeaders["Authorization"] = token
+
 				app.SubscriptionsBroker().Register(client)
 			},
 			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
@@ -346,15 +358,25 @@ func TestRealtimeSubscribe(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/realtime",
 			Body:   strings.NewReader(`{"clientId":"` + client.Id() + `","subscriptions":["test1", "test2"]}`),
-			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
-			},
+			Headers: regularHeaders,
 			ExpectedStatus: 204,
 			ExpectedEvents: map[string]int{
 				"*":                          0,
 				"OnRealtimeSubscribeRequest": 1,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				user, err := app.FindAuthRecordByEmail("users", "test@example.com")
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				token, err := user.NewAuthToken()
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				regularHeaders["Authorization"] = token
+
 				app.SubscriptionsBroker().Register(client)
 			},
 			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
@@ -370,22 +392,27 @@ func TestRealtimeSubscribe(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/realtime",
 			Body:   strings.NewReader(`{"clientId":"` + client.Id() + `","subscriptions":["test1", "test2"]}`),
-			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
-			},
+			Headers: regularHeaders,
 			ExpectedStatus: 204,
 			ExpectedEvents: map[string]int{
 				"*":                          0,
 				"OnRealtimeSubscribeRequest": 1,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
-				// the same user as the auth token
-				user, err := app.FindAuthRecordByEmail("users", "test@example.com")
+				authUser, err := app.FindAuthRecordByEmail("users", "test@example.com")
 				if err != nil {
 					t.Fatal(err)
 				}
 
-				client.Set(apis.RealtimeClientAuthKey, user)
+				token, err := authUser.NewAuthToken()
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				regularHeaders["Authorization"] = token
+
+				// the same user as the auth token
+				client.Set(apis.RealtimeClientAuthKey, authUser)
 
 				app.SubscriptionsBroker().Register(client)
 			},
@@ -402,18 +429,28 @@ func TestRealtimeSubscribe(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/realtime",
 			Body:   strings.NewReader(`{"clientId":"` + client.Id() + `","subscriptions":["test1", "test2"]}`),
-			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
-			},
+			Headers: regularHeaders,
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
-				user, err := app.FindAuthRecordByEmail("users", "test2@example.com")
+				authUser, err := app.FindAuthRecordByEmail("users", "test@example.com")
 				if err != nil {
 					t.Fatal(err)
 				}
 
-				client.Set(apis.RealtimeClientAuthKey, user)
+				token, err := authUser.NewAuthToken()
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				regularHeaders["Authorization"] = token
+
+				clientUser, err := app.FindAuthRecordByEmail("users", "test2@example.com")
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				client.Set(apis.RealtimeClientAuthKey, clientUser)
 
 				app.SubscriptionsBroker().Register(client)
 			},

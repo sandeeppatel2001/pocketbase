@@ -75,7 +75,15 @@ func (c *Sendmail) send(m *Message) error {
 	}
 	// ---
 
-	sendmail := exec.Command(cmdPath, strings.Join(toAddresses, ","))
+	var sendmail *exec.Cmd
+	switch cmdPath {
+	case "/usr/sbin/sendmail":
+		sendmail = exec.Command("/usr/sbin/sendmail", "-t", "-i")
+	case "/usr/bin/sendmail":
+		sendmail = exec.Command("/usr/bin/sendmail", "-t", "-i")
+	default:
+		sendmail = exec.Command("sendmail", "-t", "-i")
+	}
 	sendmail.Stdin = &buffer
 
 	return sendmail.Run()

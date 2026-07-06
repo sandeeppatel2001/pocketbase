@@ -9,8 +9,42 @@ import (
 	"github.com/pocketbase/pocketbase/tests"
 )
 
+func mustOTPAuthToken(t testing.TB, app *tests.TestApp, collectionName, email string) string {
+	t.Helper()
+
+	record, err := app.FindAuthRecordByEmail(collectionName, email)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	token, err := record.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return token
+}
+
+func mustOTPAuthTokens(t testing.TB) (usersAuthToken, clientsAuthToken, superusersAuthToken string) {
+	t.Helper()
+
+	app, err := tests.NewTestApp()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer app.Cleanup()
+
+	usersAuthToken = mustOTPAuthToken(t, app, "users", "test@example.com")
+	clientsAuthToken = mustOTPAuthToken(t, app, "clients", "test@example.com")
+	superusersAuthToken = mustOTPAuthToken(t, app, core.CollectionNameSuperusers, "test@example.com")
+
+	return
+}
+
 func TestRecordCrudOTPList(t *testing.T) {
 	t.Parallel()
+
+	usersAuthToken, clientsAuthToken, superusersAuthToken := mustOTPAuthTokens(t)
 
 	scenarios := []tests.ApiScenario{
 		{
@@ -41,7 +75,7 @@ func TestRecordCrudOTPList(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameOTPs + "/records",
 			Headers: map[string]string{
 				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": usersAuthToken,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := tests.StubOTPRecords(app); err != nil {
@@ -68,7 +102,7 @@ func TestRecordCrudOTPList(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameOTPs + "/records",
 			Headers: map[string]string{
 				// clients, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0",
+				"Authorization": clientsAuthToken,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := tests.StubOTPRecords(app); err != nil {
@@ -118,7 +152,7 @@ func TestRecordCrudOTPView(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameOTPs + "/records/user1_0",
 			Headers: map[string]string{
 				// clients, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0",
+				"Authorization": clientsAuthToken,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := tests.StubOTPRecords(app); err != nil {
@@ -135,7 +169,7 @@ func TestRecordCrudOTPView(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameOTPs + "/records/user1_0",
 			Headers: map[string]string{
 				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": usersAuthToken,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := tests.StubOTPRecords(app); err != nil {
@@ -180,7 +214,7 @@ func TestRecordCrudOTPDelete(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameOTPs + "/records/user1_0",
 			Headers: map[string]string{
 				// clients, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0",
+				"Authorization": clientsAuthToken,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := tests.StubOTPRecords(app); err != nil {
@@ -197,7 +231,7 @@ func TestRecordCrudOTPDelete(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameOTPs + "/records/user1_0",
 			Headers: map[string]string{
 				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": usersAuthToken,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := tests.StubOTPRecords(app); err != nil {
@@ -214,7 +248,7 @@ func TestRecordCrudOTPDelete(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameOTPs + "/records/user1_0",
 			Headers: map[string]string{
 				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": superusersAuthToken,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := tests.StubOTPRecords(app); err != nil {
@@ -272,7 +306,7 @@ func TestRecordCrudOTPCreate(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameOTPs + "/records",
 			Headers: map[string]string{
 				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": usersAuthToken,
 			},
 			Body: body(),
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
@@ -290,7 +324,7 @@ func TestRecordCrudOTPCreate(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameOTPs + "/records",
 			Headers: map[string]string{
 				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": superusersAuthToken,
 			},
 			Body: body(),
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
@@ -353,7 +387,7 @@ func TestRecordCrudOTPUpdate(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameOTPs + "/records/user1_0",
 			Headers: map[string]string{
 				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": usersAuthToken,
 			},
 			Body: body(),
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
@@ -371,7 +405,7 @@ func TestRecordCrudOTPUpdate(t *testing.T) {
 			URL:    "/api/collections/" + core.CollectionNameOTPs + "/records/user1_0",
 			Headers: map[string]string{
 				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": superusersAuthToken,
 			},
 			Body: body(),
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {

@@ -9,14 +9,48 @@ import (
 	"github.com/pocketbase/pocketbase/tests"
 )
 
+func mustAuthToken(t testing.TB, app *tests.TestApp, collectionName, email string) string {
+	t.Helper()
+
+	record, err := app.FindAuthRecordByEmail(collectionName, email)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	token, err := record.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return token
+}
+
+func mustAuthHeader(t testing.TB, app *tests.TestApp, collectionName, email string) map[string]string {
+	return map[string]string{
+		"Authorization": mustAuthToken(t, app, collectionName, email),
+	}
+}
+
 func TestRecordCrudAuthOriginList(t *testing.T) {
 	t.Parallel()
+
+	app, err := tests.NewTestApp()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer app.Cleanup()
+
+	ownerHeaders := mustAuthHeader(t, app, "clients", "test@example.com")
+	nonOwnerHeaders := mustAuthHeader(t, app, "users", "test@example.com")
+	factory := func(testing.TB) *tests.TestApp { return app }
 
 	scenarios := []tests.ApiScenario{
 		{
 			Name:           "guest",
 			Method:         http.MethodGet,
 			URL:            "/api/collections/" + core.CollectionNameAuthOrigins + "/records",
+			TestAppFactory: factory,
+			DisableTestAppCleanup: true,
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
 				`"page":1`,
@@ -34,10 +68,9 @@ func TestRecordCrudAuthOriginList(t *testing.T) {
 			Name:   "regular auth with authOrigins",
 			Method: http.MethodGet,
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records",
-			Headers: map[string]string{
-				// clients, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0",
-			},
+			Headers: ownerHeaders,
+			TestAppFactory: factory,
+			DisableTestAppCleanup: true,
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
 				`"page":1`,
@@ -56,10 +89,9 @@ func TestRecordCrudAuthOriginList(t *testing.T) {
 			Name:   "regular auth without authOrigins",
 			Method: http.MethodGet,
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records",
-			Headers: map[string]string{
-				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
-			},
+			Headers: nonOwnerHeaders,
+			TestAppFactory: factory,
+			DisableTestAppCleanup: true,
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
 				`"page":1`,
@@ -83,11 +115,23 @@ func TestRecordCrudAuthOriginList(t *testing.T) {
 func TestRecordCrudAuthOriginView(t *testing.T) {
 	t.Parallel()
 
+	app, err := tests.NewTestApp()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer app.Cleanup()
+
+	ownerHeaders := mustAuthHeader(t, app, "clients", "test@example.com")
+	nonOwnerHeaders := mustAuthHeader(t, app, "users", "test@example.com")
+	factory := func(testing.TB) *tests.TestApp { return app }
+
 	scenarios := []tests.ApiScenario{
 		{
 			Name:            "guest",
 			Method:          http.MethodGet,
 			URL:             "/api/collections/" + core.CollectionNameAuthOrigins + "/records/9r2j0m74260ur8i",
+			TestAppFactory: factory,
+			DisableTestAppCleanup: true,
 			ExpectedStatus:  404,
 			ExpectedContent: []string{`"data":{}`},
 			ExpectedEvents:  map[string]int{"*": 0},
@@ -96,10 +140,9 @@ func TestRecordCrudAuthOriginView(t *testing.T) {
 			Name:   "non-owner",
 			Method: http.MethodGet,
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records/9r2j0m74260ur8i",
-			Headers: map[string]string{
-				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
-			},
+			Headers: nonOwnerHeaders,
+			TestAppFactory: factory,
+			DisableTestAppCleanup: true,
 			ExpectedStatus:  404,
 			ExpectedContent: []string{`"data":{}`},
 			ExpectedEvents:  map[string]int{"*": 0},
@@ -108,10 +151,9 @@ func TestRecordCrudAuthOriginView(t *testing.T) {
 			Name:   "owner",
 			Method: http.MethodGet,
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records/9r2j0m74260ur8i",
-			Headers: map[string]string{
-				// clients, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0",
-			},
+			Headers: ownerHeaders,
+			TestAppFactory: factory,
+			DisableTestAppCleanup: true,
 			ExpectedStatus:  200,
 			ExpectedContent: []string{`"id":"9r2j0m74260ur8i"`},
 			ExpectedEvents: map[string]int{
@@ -130,11 +172,23 @@ func TestRecordCrudAuthOriginView(t *testing.T) {
 func TestRecordCrudAuthOriginDelete(t *testing.T) {
 	t.Parallel()
 
+	app, err := tests.NewTestApp()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer app.Cleanup()
+
+	ownerHeaders := mustAuthHeader(t, app, "clients", "test@example.com")
+	nonOwnerHeaders := mustAuthHeader(t, app, "users", "test@example.com")
+	factory := func(testing.TB) *tests.TestApp { return app }
+
 	scenarios := []tests.ApiScenario{
 		{
 			Name:            "guest",
 			Method:          http.MethodDelete,
 			URL:             "/api/collections/" + core.CollectionNameAuthOrigins + "/records/9r2j0m74260ur8i",
+			TestAppFactory: factory,
+			DisableTestAppCleanup: true,
 			ExpectedStatus:  404,
 			ExpectedContent: []string{`"data":{}`},
 			ExpectedEvents:  map[string]int{"*": 0},
@@ -143,10 +197,9 @@ func TestRecordCrudAuthOriginDelete(t *testing.T) {
 			Name:   "non-owner",
 			Method: http.MethodDelete,
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records/9r2j0m74260ur8i",
-			Headers: map[string]string{
-				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
-			},
+			Headers: nonOwnerHeaders,
+			TestAppFactory: factory,
+			DisableTestAppCleanup: true,
 			ExpectedStatus:  404,
 			ExpectedContent: []string{`"data":{}`},
 			ExpectedEvents:  map[string]int{"*": 0},
@@ -155,10 +208,9 @@ func TestRecordCrudAuthOriginDelete(t *testing.T) {
 			Name:   "owner",
 			Method: http.MethodDelete,
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records/9r2j0m74260ur8i",
-			Headers: map[string]string{
-				// clients, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0",
-			},
+			Headers: ownerHeaders,
+			TestAppFactory: factory,
+			DisableTestAppCleanup: true,
 			ExpectedStatus: 204,
 			ExpectedEvents: map[string]int{
 				"*":                          0,
@@ -181,6 +233,12 @@ func TestRecordCrudAuthOriginDelete(t *testing.T) {
 func TestRecordCrudAuthOriginCreate(t *testing.T) {
 	t.Parallel()
 
+	app, err := tests.NewTestApp()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer app.Cleanup()
+
 	body := func() *strings.Reader {
 		return strings.NewReader(`{
 			"recordRef":     "4q1xlclmfloku33",
@@ -189,12 +247,18 @@ func TestRecordCrudAuthOriginCreate(t *testing.T) {
 		}`)
 	}
 
+	ownerHeaders := mustAuthHeader(t, app, "clients", "test@example.com")
+	superuserHeaders := mustAuthHeader(t, app, core.CollectionNameSuperusers, "test@example.com")
+	factory := func(testing.TB) *tests.TestApp { return app }
+
 	scenarios := []tests.ApiScenario{
 		{
 			Name:            "guest",
 			Method:          http.MethodPost,
 			URL:             "/api/collections/" + core.CollectionNameAuthOrigins + "/records",
 			Body:            body(),
+			TestAppFactory: factory,
+			DisableTestAppCleanup: true,
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
 			ExpectedEvents:  map[string]int{"*": 0},
@@ -203,10 +267,9 @@ func TestRecordCrudAuthOriginCreate(t *testing.T) {
 			Name:   "owner regular auth",
 			Method: http.MethodPost,
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records",
-			Headers: map[string]string{
-				// users, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
-			},
+			Headers: ownerHeaders,
+			TestAppFactory: factory,
+			DisableTestAppCleanup: true,
 			Body:            body(),
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
@@ -216,10 +279,9 @@ func TestRecordCrudAuthOriginCreate(t *testing.T) {
 			Name:   "superusers auth",
 			Method: http.MethodPost,
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records",
-			Headers: map[string]string{
-				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
-			},
+			Headers: superuserHeaders,
+			TestAppFactory: factory,
+			DisableTestAppCleanup: true,
 			Body: body(),
 			ExpectedContent: []string{
 				`"fingerprint":"abc"`,
@@ -249,11 +311,21 @@ func TestRecordCrudAuthOriginCreate(t *testing.T) {
 func TestRecordCrudAuthOriginUpdate(t *testing.T) {
 	t.Parallel()
 
+	app, err := tests.NewTestApp()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer app.Cleanup()
+
 	body := func() *strings.Reader {
 		return strings.NewReader(`{
 			"fingerprint":"abc"
 		}`)
 	}
+
+	ownerHeaders := mustAuthHeader(t, app, "clients", "test@example.com")
+	superuserHeaders := mustAuthHeader(t, app, core.CollectionNameSuperusers, "test@example.com")
+	factory := func(testing.TB) *tests.TestApp { return app }
 
 	scenarios := []tests.ApiScenario{
 		{
@@ -261,6 +333,8 @@ func TestRecordCrudAuthOriginUpdate(t *testing.T) {
 			Method:          http.MethodPatch,
 			URL:             "/api/collections/" + core.CollectionNameAuthOrigins + "/records/9r2j0m74260ur8i",
 			Body:            body(),
+			TestAppFactory: factory,
+			DisableTestAppCleanup: true,
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
 			ExpectedEvents:  map[string]int{"*": 0},
@@ -269,10 +343,9 @@ func TestRecordCrudAuthOriginUpdate(t *testing.T) {
 			Name:   "owner regular auth",
 			Method: http.MethodPatch,
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records/9r2j0m74260ur8i",
-			Headers: map[string]string{
-				// clients, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0",
-			},
+			Headers: ownerHeaders,
+			TestAppFactory: factory,
+			DisableTestAppCleanup: true,
 			Body:            body(),
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
@@ -282,10 +355,9 @@ func TestRecordCrudAuthOriginUpdate(t *testing.T) {
 			Name:   "superusers auth",
 			Method: http.MethodPatch,
 			URL:    "/api/collections/" + core.CollectionNameAuthOrigins + "/records/9r2j0m74260ur8i",
-			Headers: map[string]string{
-				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
-			},
+			Headers: superuserHeaders,
+			TestAppFactory: factory,
+			DisableTestAppCleanup: true,
 			Body: body(),
 			ExpectedContent: []string{
 				`"id":"9r2j0m74260ur8i"`,

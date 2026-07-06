@@ -18,6 +18,7 @@ import (
 
 	"github.com/dop251/goja"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
@@ -918,7 +919,24 @@ func TestSecurityRandomStringBinds(t *testing.T) {
 	}
 }
 
+func makeTestJWT(t *testing.T, claims jwt.MapClaims, key string) string {
+	t.Helper()
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString([]byte(key))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return signed
+}
+
 func TestSecurityJWTBinds(t *testing.T) {
+	testJWT := makeTestJWT(t, jwt.MapClaims{
+		"sub":  "1234567890",
+		"name": "John Doe",
+	}, "test")
+
 	sceneraios := []struct {
 		name string
 		js   string
@@ -926,7 +944,7 @@ func TestSecurityJWTBinds(t *testing.T) {
 		{
 			"$security.parseUnverifiedJWT",
 			`
-				const result = $security.parseUnverifiedJWT("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIn0.aXzC7q7z1lX_hxk5P0R368xEU7H1xRwnBQQcLAmG0EY")
+				const result = $security.parseUnverifiedJWT(testJWT)
 				if (result.name != "John Doe") {
 					throw new Error("Expected result.name 'John Doe', got " + result.name)
 				}
@@ -938,7 +956,7 @@ func TestSecurityJWTBinds(t *testing.T) {
 		{
 			"$security.parseJWT",
 			`
-				const result = $security.parseJWT("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIn0.aXzC7q7z1lX_hxk5P0R368xEU7H1xRwnBQQcLAmG0EY", "test")
+				const result = $security.parseJWT(testJWT, "test")
 				if (result.name != "John Doe") {
 					throw new Error("Expected result.name 'John Doe', got " + result.name)
 				}
@@ -966,6 +984,7 @@ func TestSecurityJWTBinds(t *testing.T) {
 			vm := goja.New()
 			BindCore(vm)
 			BindSecurity(vm)
+			vm.Set("testJWT", testJWT)
 
 			_, err := vm.RunString(s.js)
 			if err != nil {

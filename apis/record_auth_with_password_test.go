@@ -8,6 +8,7 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
 	"github.com/pocketbase/pocketbase/tools/dbutils"
+	"github.com/pocketbase/pocketbase/tools/hook"
 )
 
 func TestRecordAuthWithPassword(t *testing.T) {
@@ -356,8 +357,16 @@ func TestRecordAuthWithPassword(t *testing.T) {
 				"identity":"test@example.com",
 				"password":"1234567890"
 			}`),
-			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				token := mustAuthToken(t, app, "users", "test@example.com")
+
+				e.Router.Bind(&hook.Handler[*core.RequestEvent]{
+					Priority: -2000,
+					Func: func(re *core.RequestEvent) error {
+					re.Request.Header.Set("Authorization", token)
+					return re.Next()
+					},
+				})
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{

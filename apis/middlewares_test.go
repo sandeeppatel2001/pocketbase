@@ -3,11 +3,76 @@ package apis_test
 import (
 	"net/http"
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
+	"github.com/pocketbase/pocketbase/tools/security"
 )
+
+var (
+	testRegularUserAuthToken = mustInitAuthToken("users", "test@example.com", false)
+	testRegularUserStaticAuthToken = mustInitAuthToken("users", "test@example.com", true)
+	testSuperuserAuthToken = mustInitAuthToken(core.CollectionNameSuperusers, "test@example.com", false)
+	testExpiredRegularUserAuthToken = mustInitExpiredAuthToken("users", "test@example.com")
+	testExpiredSuperuserAuthToken = mustInitExpiredAuthToken(core.CollectionNameSuperusers, "test@example.com")
+	testInvalidToken = "invalid-token"
+)
+
+func mustInitTestApp() *tests.TestApp {
+	app, err := tests.NewTestApp()
+	if err != nil {
+		panic(err)
+	}
+
+	return app
+}
+
+func mustInitAuthToken(collectionName, email string, static bool) string {
+	app := mustInitTestApp()
+	defer app.Cleanup()
+
+	record, err := app.FindAuthRecordByEmail(collectionName, email)
+	if err != nil {
+		panic(err)
+	}
+
+	var token string
+	if static {
+		token, err = record.NewStaticAuthToken(0)
+	} else {
+		token, err = record.NewAuthToken()
+	}
+	if err != nil {
+		panic(err)
+	}
+
+	return token
+}
+
+func mustInitExpiredAuthToken(collectionName, email string) string {
+	app := mustInitTestApp()
+	defer app.Cleanup()
+
+	record, err := app.FindAuthRecordByEmail(collectionName, email)
+	if err != nil {
+		panic(err)
+	}
+
+	token, err := security.NewJWT(jwt.MapClaims{
+		core.TokenClaimType:         core.TokenTypeAuth,
+		core.TokenClaimId:           record.Id,
+		core.TokenClaimCollectionId: record.Collection().Id,
+		core.TokenClaimRefreshable:  true,
+	}, record.TokenKey()+record.Collection().AuthToken.Secret, -time.Minute)
+	if err != nil {
+		panic(err)
+	}
+
+	return token
+}
 
 func TestPanicRecover(t *testing.T) {
 	t.Parallel()
@@ -63,7 +128,7 @@ func TestRequireGuestOnly(t *testing.T) {
 			Method: http.MethodGet,
 			URL:    "/my/test",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": testRegularUserAuthToken,
 			},
 			BeforeTestFunc:  beforeTestFunc,
 			ExpectedStatus:  400,
@@ -75,7 +140,7 @@ func TestRequireGuestOnly(t *testing.T) {
 			Method: http.MethodGet,
 			URL:    "/my/test",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": testSuperuserAuthToken,
 			},
 			BeforeTestFunc:  beforeTestFunc,
 			ExpectedStatus:  400,
@@ -87,7 +152,7 @@ func TestRequireGuestOnly(t *testing.T) {
 			Method: http.MethodGet,
 			URL:    "/my/test",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoxNjQwOTkxNjYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.2D3tmqPn3vc5LoqqCz8V-iCDVXo9soYiH0d32G7FQT4",
+				"Authorization": testExpiredRegularUserAuthToken,
 			},
 			BeforeTestFunc:  beforeTestFunc,
 			ExpectedStatus:  200,

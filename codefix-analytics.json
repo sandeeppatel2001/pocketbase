@@ -1,0 +1,466 @@
+{
+  "summary": {
+    "planned": 0,
+    "fixed": 41,
+    "failed": 9,
+    "skipped": 0,
+    "total_files": 50
+  },
+  "usage": {
+    "input": 694818,
+    "output": 68530
+  },
+  "current_file": null,
+  "results": [
+    {
+      "file_path": "apis/serve.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 8339,
+        "output": 349
+      }
+    },
+    {
+      "file_path": "core/syscall.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 5221,
+        "output": 244
+      }
+    },
+    {
+      "file_path": "tools/mailer/sendmail.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 6045,
+        "output": 289
+      }
+    },
+    {
+      "file_path": "plugins/jsvm/binds.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 15464,
+        "output": 4857
+      }
+    },
+    {
+      "file_path": "mails/record.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 9814,
+        "output": 357
+      }
+    },
+    {
+      "file_path": "tools/template/registry.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 6511,
+        "output": 227
+      }
+    },
+    {
+      "file_path": "ui/src/utils.js",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 24970,
+        "output": 1414
+      }
+    },
+    {
+      "file_path": "mails/base.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 1418,
+        "output": 13
+      }
+    },
+    {
+      "file_path": "tools/filesystem/blob/bucket.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 8977,
+        "output": 209
+      }
+    },
+    {
+      "file_path": "tools/filesystem/internal/fileblob/fileblob.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 12249,
+        "output": 241
+      }
+    },
+    {
+      "file_path": "tools/security/crypto.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 2953,
+        "output": 400
+      }
+    },
+    {
+      "file_path": "ui/src/collections/collectionUpsertModal.js",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 13926,
+        "output": 393
+      }
+    },
+    {
+      "file_path": "ui/src/records/recordPreviewModal.js",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 3063,
+        "output": 241
+      }
+    },
+    {
+      "file_path": "ui/src/records/recordUpsertModal.js",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 13419,
+        "output": 294
+      }
+    },
+    {
+      "file_path": "ui/src/records/recordsList.js",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 12051,
+        "output": 188
+      }
+    },
+    {
+      "file_path": "apis/record_auth_impersonate_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 16268,
+        "output": 1920
+      }
+    },
+    {
+      "file_path": "apis/record_auth_email_change_request_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 15891,
+        "output": 3769
+      }
+    },
+    {
+      "file_path": "apis/record_auth_email_change_confirm_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 12233,
+        "output": 4643
+      }
+    },
+    {
+      "file_path": "apis/record_auth_refresh_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 18109,
+        "output": 3656
+      }
+    },
+    {
+      "file_path": "apis/record_auth_verification_confirm_test.go",
+      "status": "failed",
+      "message": "Timed out after 300s",
+      "usage": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "file_path": "apis/realtime_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 19739,
+        "output": 2304
+      }
+    },
+    {
+      "file_path": "apis/middlewares_test.go",
+      "status": "failed",
+      "message": "Timed out after 300s",
+      "usage": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "file_path": "apis/record_crud_auth_origin_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 16633,
+        "output": 5107
+      }
+    },
+    {
+      "file_path": "apis/record_auth_password_reset_confirm_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 12494,
+        "output": 5636
+      }
+    },
+    {
+      "file_path": "apis/record_crud_mfa_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 38546,
+        "output": 1913
+      }
+    },
+    {
+      "file_path": "apis/collection_import_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 50422,
+        "output": 1341
+      }
+    },
+    {
+      "file_path": "apis/record_crud_otp_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 61968,
+        "output": 2383
+      }
+    },
+    {
+      "file_path": "apis/backup_test.go",
+      "status": "failed",
+      "message": "Timed out after 300s",
+      "usage": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "file_path": "apis/sql_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 15786,
+        "output": 2479
+      }
+    },
+    {
+      "file_path": "apis/record_crud_superuser_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 19263,
+        "output": 1676
+      }
+    },
+    {
+      "file_path": "apis/health_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 15048,
+        "output": 658
+      }
+    },
+    {
+      "file_path": "apis/logs_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 13139,
+        "output": 2336
+      }
+    },
+    {
+      "file_path": "apis/cron_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 17710,
+        "output": 1196
+      }
+    },
+    {
+      "file_path": "apis/batch_test.go",
+      "status": "failed",
+      "message": "Timed out after 300s",
+      "usage": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "file_path": "core/record_query_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 14274,
+        "output": 1653
+      }
+    },
+    {
+      "file_path": "apis/record_crud_external_auth_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 18827,
+        "output": 3211
+      }
+    },
+    {
+      "file_path": "apis/settings_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 20834,
+        "output": 6170
+      }
+    },
+    {
+      "file_path": "apis/file_test.go",
+      "status": "failed",
+      "message": "Timed out after 300s",
+      "usage": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "file_path": "apis/record_auth_with_oauth2_test.go",
+      "status": "failed",
+      "message": "Timed out after 300s",
+      "usage": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "file_path": "apis/record_auth_with_password_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 53514,
+        "output": 510
+      }
+    },
+    {
+      "file_path": "apis/collection_test.go",
+      "status": "failed",
+      "message": "Timed out after 300s",
+      "usage": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "file_path": "tools/security/jwt_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 6485,
+        "output": 1745
+      }
+    },
+    {
+      "file_path": "plugins/jsvm/binds_test.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 25310,
+        "output": 868
+      }
+    },
+    {
+      "file_path": "apis/record_crud_test.go",
+      "status": "failed",
+      "message": "[Errno 7] Argument list too long: 'opencode'",
+      "usage": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "file_path": "core/field_password.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 8281,
+        "output": 167
+      }
+    },
+    {
+      "file_path": "plugins/jsvm/internal/types/generated/types.d.ts",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 21512,
+        "output": 165
+      }
+    },
+    {
+      "file_path": "tools/security/random.go",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 5613,
+        "output": 273
+      }
+    },
+    {
+      "file_path": "ui/public/libs/prism/prism.js",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 24516,
+        "output": 2815
+      }
+    },
+    {
+      "file_path": "ui/public/libs/shablon/shablon.iife.js",
+      "status": "failed",
+      "message": "Timed out after 300s",
+      "usage": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "file_path": "ui/src/base/select.js",
+      "status": "fixed",
+      "message": "Successfully applied fixes via OpenCode.",
+      "usage": {
+        "input": 7983,
+        "output": 220
+      }
+    }
+  ]
+}

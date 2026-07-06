@@ -1,16 +1,75 @@
 package apis_test
 
 import (
+	"io"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
+	"github.com/pocketbase/pocketbase/tools/security"
 )
+
+type lazyStringReader struct {
+	fn   func() string
+	data []byte
+}
+
+func (r *lazyStringReader) Read(p []byte) (int, error) {
+	if r.data == nil {
+		r.data = []byte(r.fn())
+	}
+
+	if len(r.data) == 0 {
+		return 0, io.EOF
+	}
+
+	n := copy(p, r.data)
+	r.data = r.data[n:]
+
+	if len(r.data) == 0 {
+		return n, io.EOF
+	}
+
+	return n, nil
+}
+
+func newEmailChangeConfirmToken(t testing.TB, app *tests.TestApp, collectionName, email, newEmail string, duration time.Duration) string {
+	t.Helper()
+
+	record, err := app.FindAuthRecordByEmail(collectionName, email)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	token, err := security.NewJWT(jwt.MapClaims{
+		core.TokenClaimType:         core.TokenTypeEmailChange,
+		core.TokenClaimId:           record.Id,
+		core.TokenClaimCollectionId: record.Collection().Id,
+		core.TokenClaimEmail:        record.Email(),
+		core.TokenClaimNewEmail:     newEmail,
+	}, record.TokenKey()+record.Collection().EmailChangeToken.Secret, duration)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return token
+}
+
+func newEmailChangeConfirmBody(token *string, password string) io.Reader {
+	return &lazyStringReader{fn: func() string {
+		return `{"token":"` + *token + `","password":"` + password + `"}`
+	}}
+}
 
 func TestRecordConfirmEmailChange(t *testing.T) {
 	t.Parallel()
+
+	var expiredToken string
+	var validToken string
 
 	scenarios := []tests.ApiScenario{
 		{
@@ -47,10 +106,10 @@ func TestRecordConfirmEmailChange(t *testing.T) {
 			Name:   "expired token and correct password",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/confirm-email-change",
-			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImNvbGxlY3Rpb25JZCI6Il9wYl91c2Vyc19hdXRoXyIsInR5cGUiOiJlbWFpbENoYW5nZSIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsIm5ld0VtYWlsIjoiY2hhbmdlQGV4YW1wbGUuY29tIiwiZXhwIjoxNjQwOTkxNjYxfQ.dff842MO0mgRTHY8dktp0dqG9-7LGQOgRuiAbQpYBls",
-				"password":"1234567890"
-			}`),
+			Body: newEmailChangeConfirmBody(&expiredToken, "1234567890"),
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				expiredToken = newEmailChangeConfirmToken(t, app, "users", "test@example.com", "change@example.com", -time.Hour)
+			},
 			ExpectedStatus: 400,
 			ExpectedContent: []string{
 				`"data":{`,
@@ -64,7 +123,7 @@ func TestRecordConfirmEmailChange(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/confirm-email-change",
 			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"token":"<redacted-test-token>",
 				"password":"1234567890"
 			}`),
 			ExpectedStatus: 400,
@@ -79,10 +138,10 @@ func TestRecordConfirmEmailChange(t *testing.T) {
 			Name:   "valid token and incorrect password",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/confirm-email-change",
-			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImNvbGxlY3Rpb25JZCI6Il9wYl91c2Vyc19hdXRoXyIsInR5cGUiOiJlbWFpbENoYW5nZSIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsIm5ld0VtYWlsIjoiY2hhbmdlQGV4YW1wbGUuY29tIiwiZXhwIjoyNTI0NjA0NDYxfQ.Y7mVlaEPhJiNPoIvIqbIosZU4c4lEhwysOrRR8c95iU",
-				"password":"1234567891"
-			}`),
+			Body: newEmailChangeConfirmBody(&validToken, "1234567891"),
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				validToken = newEmailChangeConfirmToken(t, app, "users", "test@example.com", "change@example.com", time.Hour)
+			},
 			ExpectedStatus: 400,
 			ExpectedContent: []string{
 				`"data":{`,
@@ -95,10 +154,7 @@ func TestRecordConfirmEmailChange(t *testing.T) {
 			Name:   "valid token and correct password",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/confirm-email-change",
-			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImNvbGxlY3Rpb25JZCI6Il9wYl91c2Vyc19hdXRoXyIsInR5cGUiOiJlbWFpbENoYW5nZSIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsIm5ld0VtYWlsIjoiY2hhbmdlQGV4YW1wbGUuY29tIiwiZXhwIjoyNTI0NjA0NDYxfQ.Y7mVlaEPhJiNPoIvIqbIosZU4c4lEhwysOrRR8c95iU",
-				"password":"1234567890"
-			}`),
+			Body: newEmailChangeConfirmBody(&validToken, "1234567890"),
 			ExpectedStatus: 204,
 			ExpectedEvents: map[string]int{
 				"*":                                 0,
@@ -137,6 +193,8 @@ func TestRecordConfirmEmailChange(t *testing.T) {
 				if len(externalAuths) == 0 {
 					t.Fatal("Expected at least one external auths")
 				}
+
+				validToken = newEmailChangeConfirmToken(t, app, "users", "test@example.com", "change@example.com", time.Hour)
 			},
 			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				user, err := app.FindAuthRecordByEmail("users", "change@example.com")
@@ -162,10 +220,10 @@ func TestRecordConfirmEmailChange(t *testing.T) {
 			Name:   "valid token in different auth collection",
 			Method: http.MethodPost,
 			URL:    "/api/collections/clients/confirm-email-change",
-			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImNvbGxlY3Rpb25JZCI6Il9wYl91c2Vyc19hdXRoXyIsInR5cGUiOiJlbWFpbENoYW5nZSIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsIm5ld0VtYWlsIjoiY2hhbmdlQGV4YW1wbGUuY29tIiwiZXhwIjoyNTI0NjA0NDYxfQ.Y7mVlaEPhJiNPoIvIqbIosZU4c4lEhwysOrRR8c95iU",
-				"password":"1234567890"
-			}`),
+			Body: newEmailChangeConfirmBody(&validToken, "1234567890"),
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				validToken = newEmailChangeConfirmToken(t, app, "users", "test@example.com", "change@example.com", time.Hour)
+			},
 			ExpectedStatus: 400,
 			ExpectedContent: []string{
 				`"data":{`,
@@ -177,11 +235,10 @@ func TestRecordConfirmEmailChange(t *testing.T) {
 			Name:   "OnRecordConfirmEmailChangeRequest tx body write check",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/confirm-email-change",
-			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImNvbGxlY3Rpb25JZCI6Il9wYl91c2Vyc19hdXRoXyIsInR5cGUiOiJlbWFpbENoYW5nZSIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsIm5ld0VtYWlsIjoiY2hhbmdlQGV4YW1wbGUuY29tIiwiZXhwIjoyNTI0NjA0NDYxfQ.Y7mVlaEPhJiNPoIvIqbIosZU4c4lEhwysOrRR8c95iU",
-				"password":"1234567890"
-			}`),
+			Body: newEmailChangeConfirmBody(&validToken, "1234567890"),
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				validToken = newEmailChangeConfirmToken(t, app, "users", "test@example.com", "change@example.com", time.Hour)
+
 				app.OnRecordConfirmEmailChangeRequest().BindFunc(func(e *core.RecordConfirmEmailChangeRequestEvent) error {
 					original := e.App
 					return e.App.RunInTransaction(func(txApp core.App) error {
@@ -207,10 +264,7 @@ func TestRecordConfirmEmailChange(t *testing.T) {
 			Name:   "RateLimit rule - users:confirmEmailChange",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/confirm-email-change",
-			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImNvbGxlY3Rpb25JZCI6Il9wYl91c2Vyc19hdXRoXyIsInR5cGUiOiJlbWFpbENoYW5nZSIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsIm5ld0VtYWlsIjoiY2hhbmdlQGV4YW1wbGUuY29tIiwiZXhwIjoyNTI0NjA0NDYxfQ.Y7mVlaEPhJiNPoIvIqbIosZU4c4lEhwysOrRR8c95iU",
-				"password":"1234567890"
-			}`),
+			Body: newEmailChangeConfirmBody(&validToken, "1234567890"),
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				app.Settings().RateLimits.Enabled = true
 				app.Settings().RateLimits.Rules = []core.RateLimitRule{
@@ -218,6 +272,7 @@ func TestRecordConfirmEmailChange(t *testing.T) {
 					{MaxRequests: 100, Label: "*:confirmEmailChange"},
 					{MaxRequests: 0, Label: "users:confirmEmailChange"},
 				}
+				validToken = newEmailChangeConfirmToken(t, app, "users", "test@example.com", "change@example.com", time.Hour)
 			},
 			ExpectedStatus:  429,
 			ExpectedContent: []string{`"data":{}`},
@@ -227,16 +282,14 @@ func TestRecordConfirmEmailChange(t *testing.T) {
 			Name:   "RateLimit rule - *:confirmEmailChange",
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/confirm-email-change",
-			Body: strings.NewReader(`{
-				"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImNvbGxlY3Rpb25JZCI6Il9wYl91c2Vyc19hdXRoXyIsInR5cGUiOiJlbWFpbENoYW5nZSIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsIm5ld0VtYWlsIjoiY2hhbmdlQGV4YW1wbGUuY29tIiwiZXhwIjoyNTI0NjA0NDYxfQ.Y7mVlaEPhJiNPoIvIqbIosZU4c4lEhwysOrRR8c95iU",
-				"password":"1234567890"
-			}`),
+			Body: newEmailChangeConfirmBody(&validToken, "1234567890"),
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				app.Settings().RateLimits.Enabled = true
 				app.Settings().RateLimits.Rules = []core.RateLimitRule{
 					{MaxRequests: 100, Label: "abc"},
 					{MaxRequests: 0, Label: "*:confirmEmailChange"},
 				}
+				validToken = newEmailChangeConfirmToken(t, app, "users", "test@example.com", "change@example.com", time.Hour)
 			},
 			ExpectedStatus:  429,
 			ExpectedContent: []string{`"data":{}`},

@@ -1,4 +1,5 @@
 const DEFAULT_RANDOM_ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
+const BLOCKED_PATH_SEGMENTS = new Set(["__proto__", "prototype", "constructor"]);
 
 const navigationStore = store({
     hash: window.location.hash,
@@ -234,7 +235,11 @@ const utils = {
         let parts = (path || "").split(delimiter);
 
         for (const part of parts) {
-            if ((!utils.isObject(result) && !Array.isArray(result)) || typeof result[part] === "undefined") {
+            if (BLOCKED_PATH_SEGMENTS.has(part)) {
+                return defaultVal;
+            }
+
+            if ((!utils.isObject(result) && !Array.isArray(result)) || !Object.prototype.hasOwnProperty.call(result, part)) {
                 return defaultVal;
             }
 
@@ -267,9 +272,18 @@ const utils = {
         let parts = path.split(delimiter);
         let lastPart = parts.pop();
 
+        if (BLOCKED_PATH_SEGMENTS.has(lastPart)) {
+            return;
+        }
+
         for (const part of parts) {
+            if (BLOCKED_PATH_SEGMENTS.has(part)) {
+                return;
+            }
+
             if (
                 (!utils.isObject(result) && !Array.isArray(result))
+                || !Object.prototype.hasOwnProperty.call(result, part)
                 || (!utils.isObject(result[part]) && !Array.isArray(result[part]))
             ) {
                 result[part] = {};
@@ -300,9 +314,18 @@ const utils = {
         let parts = (path || "").split(delimiter);
         let lastPart = parts.pop();
 
+        if (BLOCKED_PATH_SEGMENTS.has(lastPart)) {
+            return;
+        }
+
         for (const part of parts) {
+            if (BLOCKED_PATH_SEGMENTS.has(part)) {
+                return;
+            }
+
             if (
                 (!utils.isObject(result) && !Array.isArray(result))
+                || !Object.prototype.hasOwnProperty.call(result, part)
                 || (!utils.isObject(result[part]) && !Array.isArray(result[part]))
             ) {
                 result[part] = {};
@@ -506,8 +529,12 @@ const utils = {
             str = str.replace(specialCharsMap[k], k);
         }
 
+        const preservedChars = new Set(preserved);
+
         return str
-            .replace(new RegExp("[" + preserved.join("") + "]", "g"), " ") // replace preserved characters with spaces
+            .split("")
+            .map((ch) => preservedChars.has(ch) ? " " : ch)
+            .join("") // replace preserved characters with spaces
             .replace(/[^\w\ ]/gi, "") // replaces all non-alphanumeric with empty string
             .replace(/\s+/g, delimiter); // collapse whitespaces and replace with `delimiter`
     },
@@ -523,12 +550,20 @@ const utils = {
             return "";
         }
 
-        return str
-            .replaceAll("&", "&amp;")
-            .replaceAll("<", "&lt;")
-            .replaceAll(">", "&gt;")
-            .replaceAll("\"", "&quot;")
-            .replaceAll("'", "&#039;");
+        const entities = {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            "\"": "&quot;",
+            "'": "&#039;",
+        };
+
+        let result = "";
+        for (const ch of String(str)) {
+            result += entities[ch] || ch;
+        }
+
+        return result;
     },
 
     /**
@@ -915,14 +950,25 @@ const utils = {
     isActivePath(href, subPathPattern = true, customHash = "") {
         customHash = customHash || navigationStore.hash;
 
-        let pattern;
-        if (subPathPattern) {
-            pattern = new RegExp("^" + RegExp.escape(href) + "\\/?.*$");
-        } else {
-            pattern = new RegExp("^" + RegExp.escape(href) + "\\/?(?:\\?.+)?$");
+        if (!href) {
+            return true;
         }
 
-        return pattern.test(customHash);
+        if (subPathPattern) {
+            if (!customHash.startsWith(href)) {
+                return false;
+            }
+
+            const rest = customHash.slice(href.length);
+            return rest === "" || rest.startsWith("/") || rest.startsWith("?");
+        }
+
+        if (!customHash.startsWith(href)) {
+            return false;
+        }
+
+        const rest = customHash.slice(href.length);
+        return rest === "" || rest === "/" || (rest.startsWith("/?") && rest.length > 2) || (rest.startsWith("?") && rest.length > 1);
     },
 
     /**

@@ -5,7 +5,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
+)
+
+var (
+	testSQLRegularUserAuthToken = mustInitAuthToken("users", "test2@example.com", false)
+	testSQLSuperuserAuthToken   = mustInitAuthToken(core.CollectionNameSuperusers, "test@example.com", false)
 )
 
 func TestSQLRun(t *testing.T) {
@@ -28,7 +34,7 @@ func TestSQLRun(t *testing.T) {
 			Body:   strings.NewReader(`{"query":"select 1"}`),
 			Headers: map[string]string{
 				// users, test2@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6Im9hcDY0MGNvdDR5cnUycyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.GfJo6EHIobgas_AXt-M-tj5IoQendPnrkMSe9ExuSEY",
+				"Authorization": testSQLRegularUserAuthToken,
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
@@ -41,7 +47,7 @@ func TestSQLRun(t *testing.T) {
 			Body:   strings.NewReader(`{"query":"select 1"}`),
 			Headers: map[string]string{
 				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": testSQLSuperuserAuthToken,
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
@@ -59,7 +65,7 @@ func TestSQLRun(t *testing.T) {
 			Body:   strings.NewReader(`{"query":""}`),
 			Headers: map[string]string{
 				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": testSQLSuperuserAuthToken,
 			},
 			ExpectedStatus: 400,
 			ExpectedContent: []string{
@@ -75,7 +81,7 @@ func TestSQLRun(t *testing.T) {
 			Body:   strings.NewReader(`{"query":"invalid"}`),
 			Headers: map[string]string{
 				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": testSQLSuperuserAuthToken,
 			},
 			ExpectedStatus: 400,
 			ExpectedContent: []string{
@@ -92,7 +98,7 @@ func TestSQLRun(t *testing.T) {
 			Body:   strings.NewReader(`{"query":"` + strings.Repeat("a", 5001) + `"}`),
 			Headers: map[string]string{
 				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": testSQLSuperuserAuthToken,
 			},
 			ExpectedStatus: 400,
 			ExpectedContent: []string{
@@ -108,7 +114,7 @@ func TestSQLRun(t *testing.T) {
 			Body:   strings.NewReader(`{"query":"select '` + strings.Repeat("a", 4985) + `' as id"}`),
 			Headers: map[string]string{
 				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": testSQLSuperuserAuthToken,
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
@@ -126,7 +132,7 @@ func TestSQLRun(t *testing.T) {
 			Body:   strings.NewReader(`{"query":"create table test_sql_table(id int primary key)"}`),
 			Headers: map[string]string{
 				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": testSQLSuperuserAuthToken,
 			},
 			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				if !app.HasTable("test_sql_table") {
@@ -149,7 +155,7 @@ func TestSQLRun(t *testing.T) {
 			Body:   strings.NewReader(`{"query":"create table test_sql_table(id int primary key);insert into test_sql_table(id)VALUES(1)"}`),
 			Headers: map[string]string{
 				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": testSQLSuperuserAuthToken,
 			},
 			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				var total int
@@ -178,7 +184,7 @@ func TestSQLRun(t *testing.T) {
 			Body:   strings.NewReader(`{"query":"create table test_sql_table(id int primary key);insert into test_sql_table(id)VALUES(1);invalid"}`),
 			Headers: map[string]string{
 				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": testSQLSuperuserAuthToken,
 			},
 			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				if app.HasTable("test_sql_table") {
@@ -200,7 +206,7 @@ func TestSQLRun(t *testing.T) {
 			Body:   strings.NewReader(`{"query":"select 1;select 2"}`),
 			Headers: map[string]string{
 				// superusers, test@example.com
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": testSQLSuperuserAuthToken,
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{

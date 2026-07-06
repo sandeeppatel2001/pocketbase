@@ -35,7 +35,7 @@ window.app.modals.openRecordPreview = function(record, modalSettings = {
 function downloadJSON(record) {
     // clear expand if any
     if (record.expand) {
-        record = Object.assign({}, record);
+        record = { ...record };
         delete record.expand;
     }
 
@@ -45,7 +45,7 @@ function downloadJSON(record) {
 function copyJSON(record) {
     // clear expand if any
     if (record.expand) {
-        record = Object.assign({}, record);
+        record = { ...record };
         delete record.expand;
     }
 
@@ -104,7 +104,7 @@ function recordPreviewModal(rawRecord, modalSettings) {
                 });
 
             // populate with an up-to-date fields
-            Object.assign(data.record, record);
+            data.record = record;
 
             data.isLoading = false;
         } catch (err) {

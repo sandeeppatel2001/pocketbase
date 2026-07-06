@@ -9,12 +9,86 @@ import (
 	"runtime"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
+	"github.com/pocketbase/pocketbase/tools/security"
 	"github.com/pocketbase/pocketbase/tools/types"
 )
+
+var (
+	testRegularUserAuthToken      = mustInitAuthToken("users", "test@example.com")
+	testSuperuserAuthToken        = mustInitAuthToken(core.CollectionNameSuperusers, "test@example.com")
+	testSuperuserFileToken        = mustInitFileToken(core.CollectionNameSuperusers, "test@example.com")
+	testExpiredSuperuserFileToken = mustInitExpiredFileToken(core.CollectionNameSuperusers, "test@example.com")
+)
+
+func mustInitTestApp() *tests.TestApp {
+	app, err := tests.NewTestApp()
+	if err != nil {
+		panic(err)
+	}
+
+	return app
+}
+
+func mustInitAuthToken(collectionName, email string) string {
+	app := mustInitTestApp()
+	defer app.Cleanup()
+
+	record, err := app.FindAuthRecordByEmail(collectionName, email)
+	if err != nil {
+		panic(err)
+	}
+
+	token, err := record.NewAuthToken()
+	if err != nil {
+		panic(err)
+	}
+
+	return token
+}
+
+func mustInitFileToken(collectionName, email string) string {
+	app := mustInitTestApp()
+	defer app.Cleanup()
+
+	record, err := app.FindAuthRecordByEmail(collectionName, email)
+	if err != nil {
+		panic(err)
+	}
+
+	token, err := record.NewFileToken()
+	if err != nil {
+		panic(err)
+	}
+
+	return token
+}
+
+func mustInitExpiredFileToken(collectionName, email string) string {
+	app := mustInitTestApp()
+	defer app.Cleanup()
+
+	record, err := app.FindAuthRecordByEmail(collectionName, email)
+	if err != nil {
+		panic(err)
+	}
+
+	token, err := security.NewJWT(jwt.MapClaims{
+		core.TokenClaimType:         core.TokenTypeFile,
+		core.TokenClaimId:           record.Id,
+		core.TokenClaimCollectionId: record.Collection().Id,
+	}, record.TokenKey()+record.Collection().FileToken.Secret, -time.Minute)
+	if err != nil {
+		panic(err)
+	}
+
+	return token
+}
 
 func TestFileToken(t *testing.T) {
 	t.Parallel()
@@ -33,7 +107,7 @@ func TestFileToken(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/files/token",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": testRegularUserAuthToken,
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
@@ -49,7 +123,7 @@ func TestFileToken(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/files/token",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": testSuperuserAuthToken,
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
@@ -65,7 +139,7 @@ func TestFileToken(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/files/token",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": testSuperuserAuthToken,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				app.OnFileTokenRequest().BindFunc(func(e *core.FileTokenRequestEvent) error {
@@ -337,7 +411,7 @@ func TestFileDownload(t *testing.T) {
 		{
 			Name:            "protected file - superuser with expired file token",
 			Method:          http.MethodGet,
-			URL:             "/api/files/demo1/al1h9ijdeojtsjy/300_Jsjq7RdBgA.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsImV4cCI6MTY0MDk5MTY2MSwidHlwZSI6ImZpbGUiLCJjb2xsZWN0aW9uSWQiOiJwYmNfMzE0MjYzNTgyMyJ9.nqqtqpPhxU0045F4XP_ruAkzAidYBc5oPy9ErN3XBq0",
+			URL:             "/api/files/demo1/al1h9ijdeojtsjy/300_Jsjq7RdBgA.png?token=" + testExpiredSuperuserFileToken,
 			ExpectedStatus:  404,
 			ExpectedContent: []string{`"data":{}`},
 			ExpectedEvents:  map[string]int{"*": 0},

@@ -3,6 +3,6 @@ package templates
 // Available variables:
 //
 // ```
-// HTMLContent template.HTML
+// HTMLContent string
 // ```
-const HTMLBody = `{{define "content"}}{{.HTMLContent}}{{end}}`
+const HTMLBody = `{{define "content"}}{{raw .HTMLContent}}{{end}}`

@@ -138,6 +138,18 @@ function recordUpsertModal(collection, rawRecord, modalSettings) {
         return JSON.stringify(record, redactedReplacer);
     }
 
+    function safeShallowCopy(target, source) {
+        for (const key of Object.keys(source || {})) {
+            if (key == "__proto__" || key == "prototype" || key == "constructor") {
+                continue;
+            }
+
+            target[key] = source[key];
+        }
+
+        return target;
+    }
+
     // ---
 
     // note: not a getter to avoid the microtask batching
@@ -251,8 +263,8 @@ function recordUpsertModal(collection, rawRecord, modalSettings) {
             }
 
             // extend, not overwrite, to prevent reseting the reference passed down to the inputs
-            Object.assign(data.originalRecord, JSON.parse(JSON.stringify(record)));
-            Object.assign(data.record, JSON.parse(JSON.stringify(record)));
+            safeShallowCopy(data.originalRecord, JSON.parse(JSON.stringify(record)));
+            safeShallowCopy(data.record, JSON.parse(JSON.stringify(record)));
 
             data.isLoading = false;
 

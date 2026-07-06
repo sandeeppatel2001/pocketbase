@@ -8,9 +8,21 @@ import (
 	"github.com/pocketbase/pocketbase/tools/security"
 )
 
+func makeTestJWT(t *testing.T, claims jwt.MapClaims, key string) string {
+	t.Helper()
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString([]byte(key))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return signed
+}
+
 func TestParseUnverifiedJWT(t *testing.T) {
 	// invalid formatted JWT
-	result1, err1 := security.ParseUnverifiedJWT("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdCJ9")
+	result1, err1 := security.ParseUnverifiedJWT("not-a-jwt")
 	if err1 == nil {
 		t.Error("Expected error got nil")
 	}
@@ -20,7 +32,7 @@ func TestParseUnverifiedJWT(t *testing.T) {
 
 	// properly formatted JWT with INVALID claims
 	// {"name": "test", "exp":1516239022}
-	result2, err2 := security.ParseUnverifiedJWT("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdCIsImV4cCI6MTUxNjIzOTAyMn0.xYHirwESfSEW3Cq2BL47CEASvD_p_ps3QCA54XtNktU")
+	result2, err2 := security.ParseUnverifiedJWT(makeTestJWT(t, jwt.MapClaims{"name": "test", "exp": 1516239022}, "test"))
 	if err2 == nil {
 		t.Error("Expected error got nil")
 	}
@@ -30,7 +42,7 @@ func TestParseUnverifiedJWT(t *testing.T) {
 
 	// properly formatted JWT with VALID claims (missing exp)
 	// {"name": "test"}
-	result3, err3 := security.ParseUnverifiedJWT("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdCJ9.ml0QsTms3K9wMygTu41ZhKlTyjmW9zHQtoS8FUsCCjU")
+	result3, err3 := security.ParseUnverifiedJWT(makeTestJWT(t, jwt.MapClaims{"name": "test"}, "test"))
 	if err3 != nil {
 		t.Error("Expected nil, got", err3)
 	}
@@ -40,7 +52,7 @@ func TestParseUnverifiedJWT(t *testing.T) {
 
 	// properly formatted JWT with VALID claims (valid exp)
 	// {"name": "test", "exp": 2524604461}
-	result4, err4 := security.ParseUnverifiedJWT("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoidGVzdCIsImV4cCI6MjUyNDYwNDQ2MX0.VIEO73GP5QRQOSfHgQhaqeuYqcx59vL3xlxmFP-fytQ")
+	result4, err4 := security.ParseUnverifiedJWT(makeTestJWT(t, jwt.MapClaims{"name": "test", "exp": 2524604461}, "test"))
 	if err4 != nil {
 		t.Error("Expected nil, got", err4)
 	}
@@ -50,6 +62,10 @@ func TestParseUnverifiedJWT(t *testing.T) {
 }
 
 func TestParseJWT(t *testing.T) {
+	invalidClaimsToken := makeTestJWT(t, jwt.MapClaims{"name": "test", "exp": 1516239022}, "test")
+	validClaimsToken := makeTestJWT(t, jwt.MapClaims{"name": "test"}, "test")
+	validExpToken := makeTestJWT(t, jwt.MapClaims{"name": "test", "exp": 2524604461}, "test")
+
 	scenarios := []struct {
 		name         string
 		token        string
@@ -59,7 +75,7 @@ func TestParseJWT(t *testing.T) {
 	}{
 		{
 			"invalid formatted JWT",
-			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdCJ9",
+			"not-a-jwt",
 			"test",
 			true,
 			nil,
@@ -67,7 +83,7 @@ func TestParseJWT(t *testing.T) {
 		{
 			"properly formatted JWT with INVALID claims and INVALID secret",
 			// {"name": "test", "exp": 1516239022}
-			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdCIsImV4cCI6MTUxNjIzOTAyMn0.xYHirwESfSEW3Cq2BL47CEASvD_p_ps3QCA54XtNktU",
+			invalidClaimsToken,
 			"invalid",
 			true,
 			nil,
@@ -75,7 +91,7 @@ func TestParseJWT(t *testing.T) {
 		{
 			"properly formatted JWT with INVALID claims and VALID secret",
 			// {"name": "test", "exp": 1516239022}
-			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdCIsImV4cCI6MTUxNjIzOTAyMn0.xYHirwESfSEW3Cq2BL47CEASvD_p_ps3QCA54XtNktU",
+			invalidClaimsToken,
 			"test",
 			true,
 			nil,
@@ -83,7 +99,7 @@ func TestParseJWT(t *testing.T) {
 		{
 			"properly formatted JWT with VALID claims and INVALID secret",
 			// {"name": "test", "exp": 2524604461}
-			"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoidGVzdCIsImV4cCI6MjUyNDYwNDQ2MX0.VIEO73GP5QRQOSfHgQhaqeuYqcx59vL3xlxmFP-fytQ",
+			validExpToken,
 			"invalid",
 			true,
 			nil,
@@ -91,7 +107,7 @@ func TestParseJWT(t *testing.T) {
 		{
 			"properly formatted JWT with VALID claims and VALID secret",
 			// {"name": "test", "exp": 2524604461}
-			"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoidGVzdCIsImV4cCI6MjUyNDYwNDQ2MX0.VIEO73GP5QRQOSfHgQhaqeuYqcx59vL3xlxmFP-fytQ",
+			validExpToken,
 			"test",
 			false,
 			jwt.MapClaims{"name": "test", "exp": 2524604461.0},
@@ -99,7 +115,7 @@ func TestParseJWT(t *testing.T) {
 		{
 			"properly formatted JWT with VALID claims (without exp) and VALID secret",
 			// {"name": "test"}
-			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdCJ9.ml0QsTms3K9wMygTu41ZhKlTyjmW9zHQtoS8FUsCCjU",
+			validClaimsToken,
 			"test",
 			false,
 			jwt.MapClaims{"name": "test"},

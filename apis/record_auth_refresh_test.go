@@ -8,8 +8,52 @@ import (
 	"github.com/pocketbase/pocketbase/tests"
 )
 
+func mustAuthToken(t testing.TB, app *tests.TestApp, collectionName, email string) string {
+	t.Helper()
+
+	record, err := app.FindAuthRecordByEmail(collectionName, email)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	token, err := record.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return token
+}
+
+func mustStaticAuthToken(t testing.TB, app *tests.TestApp, collectionName, email string) string {
+	t.Helper()
+
+	record, err := app.FindAuthRecordByEmail(collectionName, email)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	token, err := record.NewStaticAuthToken(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return token
+}
+
 func TestRecordAuthRefresh(t *testing.T) {
 	t.Parallel()
+
+	app, err := tests.NewTestApp()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer app.Cleanup()
+
+	superuserAuthToken := mustAuthToken(t, app, core.CollectionNameSuperusers, "test@example.com")
+	usersAuthToken := mustAuthToken(t, app, "users", "test@example.com")
+	usersStaticAuthToken := mustStaticAuthToken(t, app, "users", "test@example.com")
+	clientsUnverifiedAuthToken := mustAuthToken(t, app, "clients", "test2@example.com")
+	clientsVerifiedAuthToken := mustAuthToken(t, app, "clients", "test@example.com")
 
 	scenarios := []tests.ApiScenario{
 		{
@@ -25,7 +69,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/auth-refresh",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+				"Authorization": superuserAuthToken,
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
@@ -36,7 +80,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/demo1/auth-refresh",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": usersAuthToken,
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
@@ -47,7 +91,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/clients/auth-refresh?expand=rel,missing",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": usersAuthToken,
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
@@ -58,7 +102,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/auth-refresh?expand=rel,missing",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": usersAuthToken,
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
@@ -74,7 +118,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			NotExpectedContent: []string{
 				`"missing":`,
 				// should return a different token
-				"eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				usersAuthToken,
 			},
 			ExpectedEvents: map[string]int{
 				"*":                          0,
@@ -88,12 +132,12 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/auth-refresh",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6ZmFsc2V9.4IsO6YMsR19crhwl_YWzvRH8pfq2Ri4Gv2dzGyneLak",
+				"Authorization": usersStaticAuthToken,
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
 				// should return the same token
-				`"token":"eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6ZmFsc2V9.4IsO6YMsR19crhwl_YWzvRH8pfq2Ri4Gv2dzGyneLak"`,
+				`"token":"` + usersStaticAuthToken + `"`,
 				`"record":`,
 				`"id":"4q1xlclmfloku33"`,
 				`"emailVisibility":false`,
@@ -111,7 +155,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/clients/auth-refresh",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6Im8xeTBkZDBzcGQ3ODZtZCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.Zi0yXE-CNmnbTdVaQEzYZVuECqRdn3LgEM6pmB3XWBE",
+				"Authorization": clientsUnverifiedAuthToken,
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
@@ -125,7 +169,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/clients/auth-refresh",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImdrMzkwcWVnczR5NDd3biIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoidjg1MXE0cjc5MHJoa25sIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.0ONnm_BsvPRZyDNT31GN1CKUB6uQRxvVvQ-Wc9AZfG0",
+				"Authorization": clientsVerifiedAuthToken,
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
@@ -147,7 +191,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/auth-refresh",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": usersAuthToken,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				app.OnRecordAuthRefreshRequest().BindFunc(func(e *core.RecordAuthRefreshRequestEvent) error {
@@ -176,7 +220,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/auth-refresh",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": usersAuthToken,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				app.Settings().RateLimits.Enabled = true
@@ -195,7 +239,7 @@ func TestRecordAuthRefresh(t *testing.T) {
 			Method: http.MethodPost,
 			URL:    "/api/collections/users/auth-refresh",
 			Headers: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+				"Authorization": usersAuthToken,
 			},
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				app.Settings().RateLimits.Enabled = true

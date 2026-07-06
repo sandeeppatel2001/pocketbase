@@ -44,7 +44,6 @@ func hooksBinds(app core.App, loader *goja.Runtime, executors *vmsPool) {
 	fm := FieldMapper{}
 
 	appType := reflect.TypeOf(app)
-	appValue := reflect.ValueOf(app)
 	totalMethods := appType.NumMethod()
 	excludeHooks := []string{"OnServe"}
 
@@ -58,47 +57,197 @@ func hooksBinds(app core.App, loader *goja.Runtime, executors *vmsPool) {
 
 		// register the hook to the loader
 		loader.Set(jsName, func(callback string, tags ...string) {
-			// overwrite the global $app with the hook scoped instance
-			callback = `function(e) { $app = e.app; return (` + callback + `).call(undefined, e) }`
-			pr := goja.MustCompile(defaultScriptPath, "{("+callback+").apply(undefined, __args)}", true)
-
-			tagsAsValues := make([]reflect.Value, len(tags))
-			for i, tag := range tags {
-				tagsAsValues[i] = reflect.ValueOf(tag)
+			switch method.Name {
+			case "OnBootstrap":
+				bindJSHook[*core.BootstrapEvent](app.OnBootstrap().BindFunc, executors, app, callback)
+			case "OnTerminate":
+				bindJSHook[*core.TerminateEvent](app.OnTerminate().BindFunc, executors, app, callback)
+			case "OnBackupCreate":
+				bindJSHook[*core.BackupEvent](app.OnBackupCreate().BindFunc, executors, app, callback)
+			case "OnBackupRestore":
+				bindJSHook[*core.BackupEvent](app.OnBackupRestore().BindFunc, executors, app, callback)
+			case "OnModelCreate":
+				bindJSHook[*core.ModelEvent](app.OnModelCreate(tags...).BindFunc, executors, app, callback)
+			case "OnModelCreateExecute":
+				bindJSHook[*core.ModelEvent](app.OnModelCreateExecute(tags...).BindFunc, executors, app, callback)
+			case "OnModelAfterCreateSuccess":
+				bindJSHook[*core.ModelEvent](app.OnModelAfterCreateSuccess(tags...).BindFunc, executors, app, callback)
+			case "OnModelAfterCreateError":
+				bindJSHook[*core.ModelErrorEvent](app.OnModelAfterCreateError(tags...).BindFunc, executors, app, callback)
+			case "OnModelUpdate":
+				bindJSHook[*core.ModelEvent](app.OnModelUpdate(tags...).BindFunc, executors, app, callback)
+			case "OnModelUpdateExecute":
+				bindJSHook[*core.ModelEvent](app.OnModelUpdateExecute(tags...).BindFunc, executors, app, callback)
+			case "OnModelAfterUpdateSuccess":
+				bindJSHook[*core.ModelEvent](app.OnModelAfterUpdateSuccess(tags...).BindFunc, executors, app, callback)
+			case "OnModelAfterUpdateError":
+				bindJSHook[*core.ModelErrorEvent](app.OnModelAfterUpdateError(tags...).BindFunc, executors, app, callback)
+			case "OnModelValidate":
+				bindJSHook[*core.ModelEvent](app.OnModelValidate(tags...).BindFunc, executors, app, callback)
+			case "OnModelDelete":
+				bindJSHook[*core.ModelEvent](app.OnModelDelete(tags...).BindFunc, executors, app, callback)
+			case "OnModelDeleteExecute":
+				bindJSHook[*core.ModelEvent](app.OnModelDeleteExecute(tags...).BindFunc, executors, app, callback)
+			case "OnModelAfterDeleteSuccess":
+				bindJSHook[*core.ModelEvent](app.OnModelAfterDeleteSuccess(tags...).BindFunc, executors, app, callback)
+			case "OnModelAfterDeleteError":
+				bindJSHook[*core.ModelErrorEvent](app.OnModelAfterDeleteError(tags...).BindFunc, executors, app, callback)
+			case "OnRecordEnrich":
+				bindJSHook[*core.RecordEnrichEvent](app.OnRecordEnrich(tags...).BindFunc, executors, app, callback)
+			case "OnRecordValidate":
+				bindJSHook[*core.RecordEvent](app.OnRecordValidate(tags...).BindFunc, executors, app, callback)
+			case "OnRecordCreate":
+				bindJSHook[*core.RecordEvent](app.OnRecordCreate(tags...).BindFunc, executors, app, callback)
+			case "OnRecordCreateExecute":
+				bindJSHook[*core.RecordEvent](app.OnRecordCreateExecute(tags...).BindFunc, executors, app, callback)
+			case "OnRecordAfterCreateSuccess":
+				bindJSHook[*core.RecordEvent](app.OnRecordAfterCreateSuccess(tags...).BindFunc, executors, app, callback)
+			case "OnRecordAfterCreateError":
+				bindJSHook[*core.RecordErrorEvent](app.OnRecordAfterCreateError(tags...).BindFunc, executors, app, callback)
+			case "OnRecordUpdate":
+				bindJSHook[*core.RecordEvent](app.OnRecordUpdate(tags...).BindFunc, executors, app, callback)
+			case "OnRecordUpdateExecute":
+				bindJSHook[*core.RecordEvent](app.OnRecordUpdateExecute(tags...).BindFunc, executors, app, callback)
+			case "OnRecordAfterUpdateSuccess":
+				bindJSHook[*core.RecordEvent](app.OnRecordAfterUpdateSuccess(tags...).BindFunc, executors, app, callback)
+			case "OnRecordAfterUpdateError":
+				bindJSHook[*core.RecordErrorEvent](app.OnRecordAfterUpdateError(tags...).BindFunc, executors, app, callback)
+			case "OnRecordDelete":
+				bindJSHook[*core.RecordEvent](app.OnRecordDelete(tags...).BindFunc, executors, app, callback)
+			case "OnRecordDeleteExecute":
+				bindJSHook[*core.RecordEvent](app.OnRecordDeleteExecute(tags...).BindFunc, executors, app, callback)
+			case "OnRecordAfterDeleteSuccess":
+				bindJSHook[*core.RecordEvent](app.OnRecordAfterDeleteSuccess(tags...).BindFunc, executors, app, callback)
+			case "OnRecordAfterDeleteError":
+				bindJSHook[*core.RecordErrorEvent](app.OnRecordAfterDeleteError(tags...).BindFunc, executors, app, callback)
+			case "OnCollectionValidate":
+				bindJSHook[*core.CollectionEvent](app.OnCollectionValidate(tags...).BindFunc, executors, app, callback)
+			case "OnCollectionCreate":
+				bindJSHook[*core.CollectionEvent](app.OnCollectionCreate(tags...).BindFunc, executors, app, callback)
+			case "OnCollectionCreateExecute":
+				bindJSHook[*core.CollectionEvent](app.OnCollectionCreateExecute(tags...).BindFunc, executors, app, callback)
+			case "OnCollectionAfterCreateSuccess":
+				bindJSHook[*core.CollectionEvent](app.OnCollectionAfterCreateSuccess(tags...).BindFunc, executors, app, callback)
+			case "OnCollectionAfterCreateError":
+				bindJSHook[*core.CollectionErrorEvent](app.OnCollectionAfterCreateError(tags...).BindFunc, executors, app, callback)
+			case "OnCollectionUpdate":
+				bindJSHook[*core.CollectionEvent](app.OnCollectionUpdate(tags...).BindFunc, executors, app, callback)
+			case "OnCollectionUpdateExecute":
+				bindJSHook[*core.CollectionEvent](app.OnCollectionUpdateExecute(tags...).BindFunc, executors, app, callback)
+			case "OnCollectionAfterUpdateSuccess":
+				bindJSHook[*core.CollectionEvent](app.OnCollectionAfterUpdateSuccess(tags...).BindFunc, executors, app, callback)
+			case "OnCollectionAfterUpdateError":
+				bindJSHook[*core.CollectionErrorEvent](app.OnCollectionAfterUpdateError(tags...).BindFunc, executors, app, callback)
+			case "OnCollectionDelete":
+				bindJSHook[*core.CollectionEvent](app.OnCollectionDelete(tags...).BindFunc, executors, app, callback)
+			case "OnCollectionDeleteExecute":
+				bindJSHook[*core.CollectionEvent](app.OnCollectionDeleteExecute(tags...).BindFunc, executors, app, callback)
+			case "OnCollectionAfterDeleteSuccess":
+				bindJSHook[*core.CollectionEvent](app.OnCollectionAfterDeleteSuccess(tags...).BindFunc, executors, app, callback)
+			case "OnCollectionAfterDeleteError":
+				bindJSHook[*core.CollectionErrorEvent](app.OnCollectionAfterDeleteError(tags...).BindFunc, executors, app, callback)
+			case "OnMailerSend":
+				bindJSHook[*core.MailerEvent](app.OnMailerSend().BindFunc, executors, app, callback)
+			case "OnMailerRecordPasswordResetSend":
+				bindJSHook[*core.MailerRecordEvent](app.OnMailerRecordPasswordResetSend(tags...).BindFunc, executors, app, callback)
+			case "OnMailerRecordVerificationSend":
+				bindJSHook[*core.MailerRecordEvent](app.OnMailerRecordVerificationSend(tags...).BindFunc, executors, app, callback)
+			case "OnMailerRecordEmailChangeSend":
+				bindJSHook[*core.MailerRecordEvent](app.OnMailerRecordEmailChangeSend(tags...).BindFunc, executors, app, callback)
+			case "OnMailerRecordOTPSend":
+				bindJSHook[*core.MailerRecordEvent](app.OnMailerRecordOTPSend(tags...).BindFunc, executors, app, callback)
+			case "OnMailerRecordAuthAlertSend":
+				bindJSHook[*core.MailerRecordEvent](app.OnMailerRecordAuthAlertSend(tags...).BindFunc, executors, app, callback)
+			case "OnRealtimeConnectRequest":
+				bindJSHook[*core.RealtimeConnectRequestEvent](app.OnRealtimeConnectRequest().BindFunc, executors, app, callback)
+			case "OnRealtimeMessageSend":
+				bindJSHook[*core.RealtimeMessageEvent](app.OnRealtimeMessageSend().BindFunc, executors, app, callback)
+			case "OnRealtimeSubscribeRequest":
+				bindJSHook[*core.RealtimeSubscribeRequestEvent](app.OnRealtimeSubscribeRequest().BindFunc, executors, app, callback)
+			case "OnSettingsListRequest":
+				bindJSHook[*core.SettingsListRequestEvent](app.OnSettingsListRequest().BindFunc, executors, app, callback)
+			case "OnSettingsUpdateRequest":
+				bindJSHook[*core.SettingsUpdateRequestEvent](app.OnSettingsUpdateRequest().BindFunc, executors, app, callback)
+			case "OnSettingsReload":
+				bindJSHook[*core.SettingsReloadEvent](app.OnSettingsReload().BindFunc, executors, app, callback)
+			case "OnFileDownloadRequest":
+				bindJSHook[*core.FileDownloadRequestEvent](app.OnFileDownloadRequest(tags...).BindFunc, executors, app, callback)
+			case "OnFileTokenRequest":
+				bindJSHook[*core.FileTokenRequestEvent](app.OnFileTokenRequest(tags...).BindFunc, executors, app, callback)
+			case "OnRecordAuthRequest":
+				bindJSHook[*core.RecordAuthRequestEvent](app.OnRecordAuthRequest(tags...).BindFunc, executors, app, callback)
+			case "OnRecordAuthWithPasswordRequest":
+				bindJSHook[*core.RecordAuthWithPasswordRequestEvent](app.OnRecordAuthWithPasswordRequest(tags...).BindFunc, executors, app, callback)
+			case "OnRecordAuthWithOAuth2Request":
+				bindJSHook[*core.RecordAuthWithOAuth2RequestEvent](app.OnRecordAuthWithOAuth2Request(tags...).BindFunc, executors, app, callback)
+			case "OnRecordAuthRefreshRequest":
+				bindJSHook[*core.RecordAuthRefreshRequestEvent](app.OnRecordAuthRefreshRequest(tags...).BindFunc, executors, app, callback)
+			case "OnRecordRequestPasswordResetRequest":
+				bindJSHook[*core.RecordRequestPasswordResetRequestEvent](app.OnRecordRequestPasswordResetRequest(tags...).BindFunc, executors, app, callback)
+			case "OnRecordConfirmPasswordResetRequest":
+				bindJSHook[*core.RecordConfirmPasswordResetRequestEvent](app.OnRecordConfirmPasswordResetRequest(tags...).BindFunc, executors, app, callback)
+			case "OnRecordRequestVerificationRequest":
+				bindJSHook[*core.RecordRequestVerificationRequestEvent](app.OnRecordRequestVerificationRequest(tags...).BindFunc, executors, app, callback)
+			case "OnRecordConfirmVerificationRequest":
+				bindJSHook[*core.RecordConfirmVerificationRequestEvent](app.OnRecordConfirmVerificationRequest(tags...).BindFunc, executors, app, callback)
+			case "OnRecordRequestEmailChangeRequest":
+				bindJSHook[*core.RecordRequestEmailChangeRequestEvent](app.OnRecordRequestEmailChangeRequest(tags...).BindFunc, executors, app, callback)
+			case "OnRecordConfirmEmailChangeRequest":
+				bindJSHook[*core.RecordConfirmEmailChangeRequestEvent](app.OnRecordConfirmEmailChangeRequest(tags...).BindFunc, executors, app, callback)
+			case "OnRecordRequestOTPRequest":
+				bindJSHook[*core.RecordCreateOTPRequestEvent](app.OnRecordRequestOTPRequest(tags...).BindFunc, executors, app, callback)
+			case "OnRecordAuthWithOTPRequest":
+				bindJSHook[*core.RecordAuthWithOTPRequestEvent](app.OnRecordAuthWithOTPRequest(tags...).BindFunc, executors, app, callback)
+			case "OnRecordsListRequest":
+				bindJSHook[*core.RecordsListRequestEvent](app.OnRecordsListRequest(tags...).BindFunc, executors, app, callback)
+			case "OnRecordViewRequest":
+				bindJSHook[*core.RecordRequestEvent](app.OnRecordViewRequest(tags...).BindFunc, executors, app, callback)
+			case "OnRecordCreateRequest":
+				bindJSHook[*core.RecordRequestEvent](app.OnRecordCreateRequest(tags...).BindFunc, executors, app, callback)
+			case "OnRecordUpdateRequest":
+				bindJSHook[*core.RecordRequestEvent](app.OnRecordUpdateRequest(tags...).BindFunc, executors, app, callback)
+			case "OnRecordDeleteRequest":
+				bindJSHook[*core.RecordRequestEvent](app.OnRecordDeleteRequest(tags...).BindFunc, executors, app, callback)
+			case "OnCollectionsListRequest":
+				bindJSHook[*core.CollectionsListRequestEvent](app.OnCollectionsListRequest().BindFunc, executors, app, callback)
+			case "OnCollectionViewRequest":
+				bindJSHook[*core.CollectionRequestEvent](app.OnCollectionViewRequest().BindFunc, executors, app, callback)
+			case "OnCollectionCreateRequest":
+				bindJSHook[*core.CollectionRequestEvent](app.OnCollectionCreateRequest().BindFunc, executors, app, callback)
+			case "OnCollectionUpdateRequest":
+				bindJSHook[*core.CollectionRequestEvent](app.OnCollectionUpdateRequest().BindFunc, executors, app, callback)
+			case "OnCollectionDeleteRequest":
+				bindJSHook[*core.CollectionRequestEvent](app.OnCollectionDeleteRequest().BindFunc, executors, app, callback)
+			case "OnCollectionsImportRequest":
+				bindJSHook[*core.CollectionsImportRequestEvent](app.OnCollectionsImportRequest().BindFunc, executors, app, callback)
+			case "OnBatchRequest":
+				bindJSHook[*core.BatchRequestEvent](app.OnBatchRequest().BindFunc, executors, app, callback)
+			default:
+				panic("[hooksBinds] unsupported hook method: " + method.Name)
 			}
-
-			hookInstance := appValue.MethodByName(method.Name).Call(tagsAsValues)[0]
-			hookBindFunc := hookInstance.MethodByName("BindFunc")
-
-			handlerType := hookBindFunc.Type().In(0)
-
-			handler := reflect.MakeFunc(handlerType, func(args []reflect.Value) (results []reflect.Value) {
-				handlerArgs := make([]any, len(args))
-				for i, arg := range args {
-					handlerArgs[i] = arg.Interface()
-				}
-
-				err := executors.run(func(executor *goja.Runtime) error {
-					executor.Set("$app", goja.Undefined())
-					executor.Set("__args", handlerArgs)
-					res, err := executor.RunProgram(pr)
-					executor.Set("__args", goja.Undefined())
-
-					// check for returned Go error value
-					if resErr := checkGojaValueForError(app, res); resErr != nil {
-						return resErr
-					}
-
-					return normalizeException(err)
-				})
-
-				return []reflect.Value{reflect.ValueOf(&err).Elem()}
-			})
-
-			// register the wrapped hook handler
-			hookBindFunc.Call([]reflect.Value{handler})
 		})
 	}
+}
+
+func bindJSHook[T any](bindFunc func(func(T) error) string, executors *vmsPool, app core.App, callback string) {
+	callback = `function(e) { $app = e.app; return (` + callback + `).call(undefined, e) }`
+	pr := goja.MustCompile(defaultScriptPath, "{("+callback+").apply(undefined, __args)}", true)
+
+	bindFunc(func(e T) error {
+		return executors.run(func(executor *goja.Runtime) error {
+			executor.Set("$app", goja.Undefined())
+			executor.Set("__args", []any{e})
+			res, err := executor.RunProgram(pr)
+			executor.Set("__args", goja.Undefined())
+
+			// check for returned Go error value
+			if resErr := checkGojaValueForError(app, res); resErr != nil {
+				return resErr
+			}
+
+			return normalizeException(err)
+		})
+	})
 }
 
 func cronBinds(app core.App, loader *goja.Runtime, executors *vmsPool) {
@@ -653,7 +802,7 @@ func BindCore(vm *goja.Runtime) {
 	})
 
 	vm.Set("Cookie", func(call goja.ConstructorCall) *goja.Object {
-		instance := &http.Cookie{}
+		instance := &http.Cookie{HttpOnly: true, Secure: true}
 		return structConstructor(vm, call, instance)
 	})
 

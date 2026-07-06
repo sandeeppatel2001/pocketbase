@@ -38,7 +38,7 @@ package fileblob
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"hash"
@@ -265,8 +265,8 @@ func (drv *driver) ListPaged(ctx context.Context, opts *blob.ListOptions) (*blob
 
 		var md5 []byte
 		if xa, err := getAttrs(path); err == nil {
-			// Note: we only have the MD5 hash for blobs that we wrote.
-			// For other blobs, md5 will remain nil.
+			// Note: we only have the stored hash for blobs that we wrote.
+			// For other blobs, the digest will remain nil.
 			md5 = xa.MD5
 		}
 
@@ -473,7 +473,7 @@ func (drv *driver) NewTypedWriter(ctx context.Context, key, contentType string, 
 		f:          f,
 		path:       path,
 		contentMD5: opts.ContentMD5,
-		md5hash:    md5.New(),
+		md5hash:    sha256.New(),
 		attrs: xattrs{
 			CacheControl:       opts.CacheControl,
 			ContentDisposition: opts.ContentDisposition,

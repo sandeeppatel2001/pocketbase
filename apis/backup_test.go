@@ -9,12 +9,93 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
 	"github.com/pocketbase/pocketbase/tools/filesystem/blob"
+	"github.com/pocketbase/pocketbase/tools/security"
 )
+
+type backupTokens struct {
+	regularAuthToken          string
+	superuserAuthToken        string
+	regularFileToken          string
+	superuserFileToken        string
+	expiredSuperuserFileToken string
+}
+
+func mustBackupTokens(t testing.TB) backupTokens {
+	t.Helper()
+
+	app, err := tests.NewTestApp()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer app.Cleanup()
+
+	return backupTokens{
+		regularAuthToken:          mustAuthToken(t, app, "users", "test@example.com"),
+		superuserAuthToken:        mustAuthToken(t, app, core.CollectionNameSuperusers, "test@example.com"),
+		regularFileToken:          mustFileToken(t, app, "users", "test@example.com"),
+		superuserFileToken:        mustFileToken(t, app, core.CollectionNameSuperusers, "test@example.com"),
+		expiredSuperuserFileToken: mustExpiredFileToken(t, app, core.CollectionNameSuperusers, "test@example.com"),
+	}
+}
+
+func mustAuthToken(t testing.TB, app *tests.TestApp, collectionName, email string) string {
+	t.Helper()
+
+	record, err := app.FindAuthRecordByEmail(collectionName, email)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	token, err := record.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return token
+}
+
+func mustFileToken(t testing.TB, app *tests.TestApp, collectionName, email string) string {
+	t.Helper()
+
+	record, err := app.FindAuthRecordByEmail(collectionName, email)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	token, err := record.NewFileToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return token
+}
+
+func mustExpiredFileToken(t testing.TB, app *tests.TestApp, collectionName, email string) string {
+	t.Helper()
+
+	record, err := app.FindAuthRecordByEmail(collectionName, email)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	token, err := security.NewJWT(jwt.MapClaims{
+		core.TokenClaimType:         core.TokenTypeFile,
+		core.TokenClaimId:           record.Id,
+		core.TokenClaimCollectionId: record.Collection().Id,
+	}, record.TokenKey()+record.Collection().FileToken.Secret, -time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return token
+}
 
 func TestBackupsList(t *testing.T) {
 	t.Parallel()

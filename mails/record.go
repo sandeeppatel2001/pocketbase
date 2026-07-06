@@ -2,7 +2,6 @@ package mails
 
 import (
 	"html"
-	"html/template"
 	"net/mail"
 	"slices"
 
@@ -289,9 +288,9 @@ func resolveEmailTemplate(
 	subject, rawBody := emailTemplate.Resolve(placeholders)
 
 	params := struct {
-		HTMLContent template.HTML
+		HTMLContent string
 	}{
-		HTMLContent: template.HTML(rawBody),
+		HTMLContent: rawBody,
 	}
 
 	body, err = resolveTemplateContent(params, templates.Layout, templates.HTMLBody)

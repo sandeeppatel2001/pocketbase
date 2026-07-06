@@ -299,7 +299,13 @@ window.app.components.recordsList = function(propsArg = {}) {
             }
 
             // merge with existing
-            Object.assign(found, JSON.parse(JSON.stringify(e.detail)));
+            for (const key of Object.keys(e.detail)) {
+                if (key == "__proto__" || key == "prototype" || key == "constructor") {
+                    continue;
+                }
+
+                found[key] = JSON.parse(JSON.stringify(e.detail[key]));
+            }
         },
         "record:delete": (e) => {
             if (
