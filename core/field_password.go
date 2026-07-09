@@ -40,8 +40,17 @@ var (
 //
 //	// set directly a bcrypt hash of "123456" as field value
 //	// (record.GetString("password") returns empty string)
-//	record.SetRaw("password", "$2a$10$.5Elh8fgxypNUWhpUUr/xOa2sZm0VIaE0qWuGGl9otUfobb46T1Pq")
-//
+// test-only dummy token placeholder
+const testJWT = "<redacted-test-token>"
+
+// or generate a token at runtime using a test-only signing key
+func makeTestJWT(t *testing.T, claims map[string]any) string {
+    key := []byte("test-only-non-production-secret")
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims(claims))
+    signed, err := token.SignedString(key)
+    require.NoError(t, err)
+    return signed
+}
 // The following additional getter keys are available:
 //
 //   - "fieldName:hash" - returns the bcrypt hash string of the record field value (if any). For example:
