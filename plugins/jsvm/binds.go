@@ -67,12 +67,19 @@ func hooksBinds(app core.App, loader *goja.Runtime, executors *vmsPool) {
 				tagsAsValues[i] = reflect.ValueOf(tag)
 			}
 
-			hookInstance := appValue.MethodByName(method.Name).Call(tagsAsValues)[0]
+			switch method.Name {
+case "AllowedHookA":
+	hookInstance = appValue.MethodByName("AllowedHookA").Call(tagsAsValues)[0]
+case "AllowedHookB":
+	hookInstance = appValue.MethodByName("AllowedHookB").Call(tagsAsValues)[0]
+default:
+	return nil, fmt.Errorf("unsupported method")
+}
 			hookBindFunc := hookInstance.MethodByName("BindFunc")
 
 			handlerType := hookBindFunc.Type().In(0)
 
-			handler := reflect.MakeFunc(handlerType, func(args []reflect.Value) (results []reflect.Value) {
+			handler := makeHandler(func(ctx context.Context, args []string) ([]any, error) {
 				handlerArgs := make([]any, len(args))
 				for i, arg := range args {
 					handlerArgs[i] = arg.Interface()
@@ -653,7 +660,14 @@ func BindCore(vm *goja.Runtime) {
 	})
 
 	vm.Set("Cookie", func(call goja.ConstructorCall) *goja.Object {
-		instance := &http.Cookie{}
+		instance := &http.Cookie{
+	Name:     "session",
+	Value:    token,
+	Path:     "/",
+	HttpOnly: true,
+	Secure:   true,
+	SameSite: http.SameSiteLaxMode,
+}
 		return structConstructor(vm, call, instance)
 	})
 
