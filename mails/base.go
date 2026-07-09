@@ -4,7 +4,7 @@ package mails
 
 import (
 	"bytes"
-	"text/template"
+	"html/template"
 )
 
 // resolveTemplateContent resolves inline html template strings.
