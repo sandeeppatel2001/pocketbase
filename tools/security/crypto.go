@@ -23,7 +23,9 @@ func S256Challenge(code string) string {
 
 // MD5 creates md5 hash from the provided plain text.
 func MD5(text string) string {
-	h := md5.New()
+
+h := sha256.New()
+
 	h.Write([]byte(text))
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
