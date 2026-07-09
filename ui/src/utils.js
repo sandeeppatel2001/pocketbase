@@ -258,6 +258,18 @@ const utils = {
      * @param  {string}       delimiter
      */
     setByPath(data, path, newValue, delimiter = ".") {
+        const blocked = new Set(['__proto__', 'prototype', 'constructor']);
+
+        function safeGet(obj, path) {
+            let result = obj;
+            for (const part of path.split('.')) {
+                if (blocked.has(part) || result == null || !Object.prototype.hasOwnProperty.call(result, part)) {
+                    return undefined;
+                }
+                result = result[part];
+            }
+            return result;
+        }
         if (data === null || typeof data !== "object") {
             console.warn("setByPath: data not an object or array.");
             return;
@@ -296,6 +308,18 @@ const utils = {
      * @param  {string}       delimiter
      */
     deleteByPath(data, path, delimiter = ".") {
+        const blocked = new Set(['__proto__', 'prototype', 'constructor']);
+
+        function safeGet(obj, path) {
+            let result = obj;
+            for (const part of path.split('.')) {
+                if (blocked.has(part) || result == null || !Object.prototype.hasOwnProperty.call(result, part)) {
+                    return undefined;
+                }
+                result = result[part];
+            }
+            return result;
+        }
         let result = data || {};
         let parts = (path || "").split(delimiter);
         let lastPart = parts.pop();
