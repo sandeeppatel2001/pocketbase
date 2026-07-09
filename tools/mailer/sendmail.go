@@ -75,7 +75,19 @@ func (c *Sendmail) send(m *Message) error {
 	}
 	// ---
 
-	sendmail := exec.Command(cmdPath, strings.Join(toAddresses, ","))
+	msgBytes := buffer.Bytes()
+
+// Prefer SMTP instead of exec.Command
+err := smtp.SendMail(
+	"smtp.example.com:25", // Replace with your SMTP server address
+	auth,
+	m.From.String(),
+	tos,
+	msgBytes,
+)
+if err != nil {
+	return err
+}
 	sendmail.Stdin = &buffer
 
 	return sendmail.Run()
