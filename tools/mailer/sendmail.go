@@ -75,7 +75,23 @@ func (c *Sendmail) send(m *Message) error {
 	}
 	// ---
 
-	sendmail := exec.Command(cmdPath, strings.Join(toAddresses, ","))
+	msgBytes := buffer.Bytes()
+
+// Prefer SMTP instead of exec.Command
+err := smtp.SendMail(
+	"smtp.example.com:587",
+	auth,
+	"from@example.com",
+	toAddresses,
+	msgBytes,
+)
+if err != nil {
+	return err
+}
+
+// If an external binary is unavoidable:
+cmd := exec.Command("/usr/sbin/sendmail", "-t", "-i")
+cmd.Stdin = bytes.NewReader(msgBytes)
 	sendmail.Stdin = &buffer
 
 	return sendmail.Run()
