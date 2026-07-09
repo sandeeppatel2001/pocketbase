@@ -3,7 +3,7 @@ package security
 import (
 	cryptoRand "crypto/rand"
 	"math/big"
-	mathRand "math/rand/v2"
+	crand "crypto/rand"
 )
 
 const defaultRandomAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
