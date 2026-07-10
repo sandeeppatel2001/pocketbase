@@ -608,7 +608,7 @@ func (b *Bucket) NewWriter(ctx context.Context, key string, opts *WriterOptions)
 		cancel:     cancel,
 		key:        key,
 		contentMD5: opts.ContentMD5,
-		md5hash:    md5.New(),
+		md5hash:    sha256.New(),
 	}
 
 	if opts.ContentType != "" || opts.DisableContentTypeDetection {
