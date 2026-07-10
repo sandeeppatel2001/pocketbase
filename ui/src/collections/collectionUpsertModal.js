@@ -330,10 +330,10 @@ function collectionUpsertModal(rawCollection, modalSettings) {
 
                             // merge with the scaffold to ensure that the minimal props are set
                             const scaffold = JSON.parse(JSON.stringify(app.store.collectionScaffolds[newType]));
-                            data.collection = Object.assign(
-                                structuredClone(scaffold),
-                                JSON.parse(JSON.stringify(data.collection)),
-                            );
+data.collection = safeMergeCollection(
+  structuredClone(scaffold),
+  JSON.parse(JSON.stringify(data.collection))
+);
                             data.originalCollection = scaffold;
                             syncFieldsAndIndexesWithScaffold(data.collection);
                         },
@@ -738,7 +738,7 @@ function syncFieldsAndIndexesWithScaffold(collection) {
         }
 
         // merge the default field with the existing one
-        Object.assign(field, oldField);
+        Object.assign(field, safeMergeCollection(field, oldField));
     }
 
     for (const field of nonSystemFields) {
