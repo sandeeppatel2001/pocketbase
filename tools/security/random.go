@@ -3,7 +3,15 @@ package security
 import (
 	cryptoRand "crypto/rand"
 	"math/big"
-	mathRand "math/rand/v2"
+	crand "crypto/rand"
+
+func secureInt(max int64) (int64, error) {
+    n, err := crand.Int(crand.Reader, big.NewInt(max))
+    if err != nil {
+        return 0, err
+    }
+    return n.Int64(), nil
+}
 )
 
 const defaultRandomAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
