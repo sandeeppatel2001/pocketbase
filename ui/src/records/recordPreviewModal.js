@@ -104,7 +104,7 @@ function recordPreviewModal(rawRecord, modalSettings) {
                 });
 
             // populate with an up-to-date fields
-            Object.assign(data.record, record);
+            data.record = safeMergeCollection(data.record, record);
 
             data.isLoading = false;
         } catch (err) {
