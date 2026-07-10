@@ -72,7 +72,7 @@ func hooksBinds(app core.App, loader *goja.Runtime, executors *vmsPool) {
 
 			handlerType := hookBindFunc.Type().In(0)
 
-			handler := reflect.MakeFunc(handlerType, func(args []reflect.Value) (results []reflect.Value) {
+        handler := makeHandler(func(ctx context.Context, args []string) ([]any, error) {
 				handlerArgs := make([]any, len(args))
 				for i, arg := range args {
 					handlerArgs[i] = arg.Interface()
@@ -653,7 +653,14 @@ func BindCore(vm *goja.Runtime) {
 	})
 
 	vm.Set("Cookie", func(call goja.ConstructorCall) *goja.Object {
-		instance := &http.Cookie{}
+		cookie := &http.Cookie{
+	Name:     "session",
+	Value:    token,
+	Path:     "/",
+	HttpOnly: true,
+	Secure:   true,
+	SameSite: http.SameSiteLaxMode,
+}
 		return structConstructor(vm, call, instance)
 	})
 
