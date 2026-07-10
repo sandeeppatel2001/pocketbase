@@ -473,7 +473,7 @@ func (drv *driver) NewTypedWriter(ctx context.Context, key, contentType string, 
 		f:          f,
 		path:       path,
 		contentMD5: opts.ContentMD5,
-		md5hash:    md5.New(),
+		md5hash:    sha256.New(),
 		attrs: xattrs{
 			CacheControl:       opts.CacheControl,
 			ContentDisposition: opts.ContentDisposition,
