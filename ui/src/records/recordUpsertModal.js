@@ -251,8 +251,8 @@ function recordUpsertModal(collection, rawRecord, modalSettings) {
             }
 
             // extend, not overwrite, to prevent reseting the reference passed down to the inputs
-            Object.assign(data.originalRecord, JSON.parse(JSON.stringify(record)));
-            Object.assign(data.record, JSON.parse(JSON.stringify(record)));
+            data.originalRecord = safeMergeCollection(data.originalRecord, JSON.parse(JSON.stringify(record)));
+            data.record = safeMergeCollection(data.record, JSON.parse(JSON.stringify(record)));
 
             data.isLoading = false;
 

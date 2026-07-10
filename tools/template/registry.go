@@ -40,7 +40,7 @@ func NewRegistry() *Registry {
 		cache: store.New[string, *Renderer](nil),
 		funcs: template.FuncMap{
 			"raw": func(str string) template.HTML {
-				return template.HTML(str)
+				return str
 			},
 		},
 	}

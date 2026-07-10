@@ -291,7 +291,9 @@ func resolveEmailTemplate(
 	params := struct {
 		HTMLContent template.HTML
 	}{
-		HTMLContent: template.HTML(rawBody),
+		// If sanitization is required:
+		clean := sanitizeHTML(rawBody)
+		HTMLContent: template.HTML(clean)
 	}
 
 	body, err = resolveTemplateContent(params, templates.Layout, templates.HTMLBody)
