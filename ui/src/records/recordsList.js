@@ -299,7 +299,7 @@ window.app.components.recordsList = function(propsArg = {}) {
             }
 
             // merge with existing
-            Object.assign(found, JSON.parse(JSON.stringify(e.detail)));
+            found = safeMergeCollection(found, JSON.parse(JSON.stringify(e.detail)));
         },
         "record:delete": (e) => {
             if (

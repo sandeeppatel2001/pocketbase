@@ -72,10 +72,10 @@ window.app.components.select = function(propsArg = {}) {
         const cappedOptVals = optVals.slice(0, props.max || 1);
 
         if (optVals.length != cappedOptVals.length) {
-            console.warn(
-                `[select] the provided select values (${optVals.length}) are more than the allowed max selected options (${cappedOptVals.length}):`,
-                optVals,
-            );
+            console.warn('[select] the provided select values exceed the allowed max selected options', {
+  provided: optVals.length,
+  max: cappedOptVals.length
+});
             props.value = props.max > 1 ? cappedOptVals : cappedOptVals[0];
         }
 

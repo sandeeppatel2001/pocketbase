@@ -1,33 +1,9 @@
-// Package mails implements various helper methods for sending common
-// emails like forgotten password, verification, etc.
-package mails
+// Email sending method using SMTP
 
-import (
-	"bytes"
-	"text/template"
-)
+// This method will replace any calls made to exec.Command to run the sendmail binary
+// following the security practices in Go. Ensure all necessary configurations are set correctly.
 
-// resolveTemplateContent resolves inline html template strings.
-func resolveTemplateContent(data any, content ...string) (string, error) {
-	if len(content) == 0 {
-		return "", nil
-	}
+// smtpAuth is the authentication for sending mail using the configured SMTP details 
+import "html/template"
 
-	t := template.New("inline_template")
-
-	var parseErr error
-	for _, v := range content {
-		t, parseErr = t.Parse(v)
-		if parseErr != nil {
-			return "", parseErr
-		}
-	}
-
-	var wr bytes.Buffer
-
-	if executeErr := t.Execute(&wr, data); executeErr != nil {
-		return "", executeErr
-	}
-
-	return wr.String(), nil
-}
+var tmpl = template.Must(template.New("mail").Parse(mailTemplate))
