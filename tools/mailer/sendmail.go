@@ -75,7 +75,7 @@ func (c *Sendmail) send(m *Message) error {
 	}
 	// ---
 
-	sendmail := exec.Command(cmdPath, strings.Join(toAddresses, ","))
+	sendmail := exec.Command(cmdPath, "-t", "-i")
 	sendmail.Stdin = &buffer
 
 	return sendmail.Run()
