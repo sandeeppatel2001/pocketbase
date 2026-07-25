@@ -298,7 +298,7 @@ func Serve(app core.App, config ServeConfig) error {
 		if config.HttpAddr != "" {
 			// start an additional HTTP server for redirecting the traffic to the HTTPS version
 			go func() {
-    log.Fatal(http.ListenAndServeTLS(config.HttpsAddr, "path/to/certFile.pem", "path/to/keyFile.pem", certManager.HTTPHandler(nil)))
+		log.Fatal(http.ListenAndServe(config.HttpAddr, certManager.HTTPHandler(nil)))
 }()
 		}
 
