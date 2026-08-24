@@ -47,7 +47,7 @@ jobs:
         run: go test ./...
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@0123456789abcdef0123456789abcdef01234567
         with:
           distribution: goreleaser
           version: '~> v2'
