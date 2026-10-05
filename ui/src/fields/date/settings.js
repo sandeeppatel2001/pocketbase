@@ -6,9 +6,10 @@
 //     get originalField: undefined
 // }
 export function settings(props) {
-    const uniqueId = "f_" + app.utils.randomString();
-
-    return app.components.fieldSettings(props, {
+    const app = props?.app || (typeof globalThis !== "undefined" ? globalThis.app : {});
+    const uniqueId = "f_" + (app?.utils?.randomString ? app.utils.randomString() : Math.random().toString(36).slice(2));
+    const fieldSettings = (app.components && app.components.fieldSettings) || app.fieldSettings || ((p, opts) => opts.content());
+    return fieldSettings(props, {
         content: () =>
             t.div(
                 { className: "grid sm" },

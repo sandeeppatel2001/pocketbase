@@ -291,7 +291,7 @@ func resolveEmailTemplate(
 	params := struct {
 		HTMLContent template.HTML
 	}{
-		HTMLContent: template.HTML(rawBody),
+		HTMLContent: rawBody,
 	}
 
 	body, err = resolveTemplateContent(params, templates.Layout, templates.HTMLBody)

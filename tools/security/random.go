@@ -3,7 +3,7 @@ package security
 import (
 	cryptoRand "crypto/rand"
 	"math/big"
-	mathRand "math/rand/v2"
+	crand "crypto/rand"
 )
 
 const defaultRandomAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -52,7 +52,11 @@ func PseudorandomStringWithAlphabet(length int, alphabet string) string {
 	max := len(alphabet)
 
 	for i := range b {
-		b[i] = alphabet[mathRand.IntN(max)]
+		n, err := crand.Int(crand.Reader, big.NewInt(max))
+        if err != nil {
+            panic(err)
+        }
+b[i] = alphabet[n.Int64()]
 	}
 
 	return string(b)

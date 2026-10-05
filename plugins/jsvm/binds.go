@@ -66,17 +66,22 @@ func hooksBinds(app core.App, loader *goja.Runtime, executors *vmsPool) {
 			for i, tag := range tags {
 				tagsAsValues[i] = reflect.ValueOf(tag)
 			}
-
-			hookInstance := appValue.MethodByName(method.Name).Call(tagsAsValues)[0]
-			hookBindFunc := hookInstance.MethodByName("BindFunc")
-
-			handlerType := hookBindFunc.Type().In(0)
-
-			handler := reflect.MakeFunc(handlerType, func(args []reflect.Value) (results []reflect.Value) {
-				handlerArgs := make([]any, len(args))
-				for i, arg := range args {
-					handlerArgs[i] = arg.Interface()
-				}
+            switch method.Name {
+            case "AllowedHookA":
+                hookInstance = appValue.MethodByName("AllowedHookA").Call(tagsAsValues)[0]
+            case "AllowedHookB":
+                hookInstance = appValue.MethodByName("AllowedHookB").Call(tagsAsValues)[0]
+            default:
+                return nil, fmt.Errorf("unsupported method")
+            }
+            
+            handler := func(ctx context.Context, args []string) ([]any, error) {
+                if len(args) > maxArgs {
+                    return nil, fmt.Errorf("too many arguments")
+                }
+                // Custom handler logic...
+                return []any{}, nil
+            }
 
 				err := executors.run(func(executor *goja.Runtime) error {
 					executor.Set("$app", goja.Undefined())
@@ -653,7 +658,14 @@ func BindCore(vm *goja.Runtime) {
 	})
 
 	vm.Set("Cookie", func(call goja.ConstructorCall) *goja.Object {
-		instance := &http.Cookie{}
+		cookie := &http.Cookie{
+	Name:     "session",
+	Value:    token,
+	Path:     "/",
+	HttpOnly: true,
+	Secure:   true,
+	SameSite: http.SameSiteLaxMode,
+}
 		return structConstructor(vm, call, instance)
 	})
 

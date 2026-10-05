@@ -1,6 +1,17 @@
 window.app = window.app || {};
 window.app.modals = window.app.modals || {};
 
+function safeMergeCollection(scaffold, input) {
+  const allowed = ['name', 'type', 'schema', 'listRule', 'viewRule', 'createRule', 'updateRule', 'deleteRule'];
+  const out = structuredClone(scaffold);
+  for (const key of allowed) {
+    if (Object.prototype.hasOwnProperty.call(input, key)) out[key] = input[key];
+  }
+  return out;
+}
+
+// usage
+// data.collection = safeMergeCollection(scaffold, userInput);
 /**
  * Opens a record upsert modal.
  *
@@ -251,8 +262,8 @@ function recordUpsertModal(collection, rawRecord, modalSettings) {
             }
 
             // extend, not overwrite, to prevent reseting the reference passed down to the inputs
-            Object.assign(data.originalRecord, JSON.parse(JSON.stringify(record)));
-            Object.assign(data.record, JSON.parse(JSON.stringify(record)));
+            data.originalRecord = safeMergeCollection(data.originalRecord, JSON.parse(JSON.stringify(record)));
+            data.record = safeMergeCollection(data.record, JSON.parse(JSON.stringify(record)));
 
             data.isLoading = false;
 

@@ -4,16 +4,16 @@ package mails
 
 import (
 	"bytes"
-	"text/template"
+	"text/html/template"
 )
 
-// resolveTemplateContent resolves inline html template strings.
+// resolveTemplateContent resolves inline html html/template strings.
 func resolveTemplateContent(data any, content ...string) (string, error) {
 	if len(content) == 0 {
 		return "", nil
 	}
 
-	t := template.New("inline_template")
+	t := html/template.New("inline_html/template")
 
 	var parseErr error
 	for _, v := range content {
